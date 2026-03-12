@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEMPORIZADOR SINCRONIZADO</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="icon" type="image/png" href="icon_transparente.png">
+    <link rel="shortcut icon" href="icono.ico">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="logo-styles.css">
+    <link rel="stylesheet" href="time-controls.css">
+</head>
+
+<body>
+    <div class="background-gradient"></div>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="INDABI" class="app-logo">
+            </div>
+            <h1 class="app-title-text">TEMPORIZADOR SINCRONIZADO</h1>
+        </header>
+
+        <main class="main-content">
+            <div class="history-top-container">
+                <button type="button" id="toggle-history-btn" class="history-btn-blue">Historial</button>
+            </div>
+            <!-- Formulario compacto -->
+            <section class="timer-form-section-compact">
+                <form id="timer-form" class="timer-form-compact">
+                    <input type="text" id="patient-name" placeholder="Nombre (ej: FERNANDEZ)" required
+                        class="form-input-compact">
+                    <input type="text" id="study-type" placeholder="Determinación (ej: PLR)" required
+                        class="form-input-compact" list="study-suggestions">
+                    <datalist id="study-suggestions">
+                        <option value="PLR">
+                        <option value="CORTISOL">
+                        <option value="ACTH">
+                        <option value="CTM">
+                        <option value="CTGN">
+                        <option value="H.PYLORI">
+                    </datalist>
+
+                    <!-- Selector de Modo -->
+                    <div class="mode-selector">
+                        <label class="mode-option-btn mode-duration">
+                            <input type="radio" name="timer-mode" value="duration" checked onchange="toggleTimerMode()">
+                            <span>⏳ Cuenta Regresiva</span>
+                        </label>
+                        <label class="mode-option-btn mode-fixed">
+                            <input type="radio" name="timer-mode" value="fixed" onchange="toggleTimerMode()">
+                            <span>🔔 Hora Fija</span>
+                        </label>
+                    </div>
+
+                    <!-- Horas -->
+                    <div class="time-control-wrapper">
+                        <input type="number" id="timer-hours" min="0" max="24" value="0"
+                            class="form-input-compact time-input-with-arrows">
+                        <div class="time-arrows">
+                            <button type="button" class="time-arrow-btn" tabindex="-1"
+                                onclick="adjustTime('hours', 1)">▲</button>
+                            <button type="button" class="time-arrow-btn" tabindex="-1"
+                                onclick="adjustTime('hours', -1)">▼</button>
+                        </div>
+                        <span class="time-unit-label">h</span>
+                    </div>
+
+                    <!-- Minutos -->
+                    <div class="time-control-wrapper">
+                        <input type="number" id="timer-minutes" min="0" max="59" value="0"
+                            class="form-input-compact time-input-with-arrows">
+                        <div class="time-arrows">
+                            <button type="button" class="time-arrow-btn" tabindex="-1"
+                                onclick="adjustTime('minutes', 1)">▲</button>
+                            <button type="button" class="time-arrow-btn" tabindex="-1"
+                                onclick="adjustTime('minutes', -1)">▼</button>
+                        </div>
+                        <span class="time-unit-label">m</span>
+                    </div>
+
+                    <!-- Segundos -->
+                    <div class="time-control-wrapper">
+                        <input type="number" id="timer-seconds" min="0" max="59" value="0"
+                            class="form-input-compact time-input-with-arrows">
+                        <div class="time-arrows">
+                            <button type="button" class="time-arrow-btn" tabindex="-1"
+                                onclick="adjustTime('seconds', 1)">▲</button>
+                            <button type="button" class="time-arrow-btn" tabindex="-1"
+                                onclick="adjustTime('seconds', -1)">▼</button>
+                        </div>
+                        <span class="time-unit-label">s</span>
+                    </div>
+
+                    <button type="submit" class="submit-btn-compact">Agregar</button>
+                    <button type="button" class="preset-btn-compact" onclick="clearForm()">Limpiar</button>
+                </form>
+            </section>
+
+            <!-- Grid de temporizadores -->
+            <section class="timers-section">
+                <div id="timers-grid" class="timers-grid-compact">
+                    <div class="empty-state" id="empty-state">
+                        <p>No hay temporizadores activos</p>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <!-- Panel Lateral de Historial -->
+            <div id="history-panel" class="history-panel hidden">
+                <div class="history-header">
+                    <h2>Historial de Eventos</h2>
+                    <button id="open-export-btn" class="export-btn" title="Exportar a Excel">Exportar</button>
+                    <button id="close-history-btn" class="close-history-btn">×</button>
+                </div>
+                <div class="history-content">
+                    <ul id="history-list" class="history-list">
+                        <!-- Los eventos se cargarán aquí -->
+                    </ul>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal de Exportación -->
+    <div id="export-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Exportar Historial</h3>
+                <button id="close-export-btn" class="close-modal-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Rango de Fechas:</label>
+                    <div class="date-range-inputs">
+                        <input type="date" id="export-date-start" class="form-input-compact">
+                        <span>hasta</span>
+                        <input type="date" id="export-date-end" class="form-input-compact">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Tipos de Eventos:</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" value="TODOS" id="chk-all" checked> Todos</label>
+                        <label><input type="checkbox" value="CREADO" class="chk-event" checked> Creación</label>
+                        <label><input type="checkbox" value="INICIADO" class="chk-event" checked>
+                            Inicio/Reanudación</label>
+                        <label><input type="checkbox" value="PAUSADO" class="chk-event" checked> Pausa</label>
+                        <label><input type="checkbox" value="REINICIADO" class="chk-event" checked> Reinicio</label>
+                        <label><input type="checkbox" value="ELIMINADO" class="chk-event" checked> Eliminación</label>
+                        <label><input type="checkbox" value="COMPLETADO" class="chk-event" checked> Completado</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-export-btn" class="btn-secondary">Cancelar</button>
+                <button id="confirm-export-btn" class="btn-primary">Descargar Excel/CSV</button>
+            </div>
+        </div>
+    </div>
+    </div>
+    </main>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js?v=4"></script>
+</body>
+
+</html>

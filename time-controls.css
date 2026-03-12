@@ -1,0 +1,171 @@
+/* Estilos para controles de tiempo con flechas verticales a la derecha */
+.time-control-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+}
+
+.time-input-with-arrows {
+    flex: 0 0 100px;
+    /* Ancho generoso */
+    min-width: 100px;
+    padding: 8px 50px 8px 10px !important;
+    /* Espacio de sobra para las flechas */
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-align: center;
+    font-size: 1.5rem;
+    border: none !important;
+    background: transparent !important;
+    color: white !important;
+}
+
+.time-input-with-arrows:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* ELIMINAR SPINNERS NATIVOS (PUNTOS BLANCOS) - FORZADO */
+.time-input-with-arrows::-webkit-outer-spin-button,
+.time-input-with-arrows::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    margin: 0 !important;
+    display: none !important;
+}
+
+.time-input-with-arrows[type=number] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+}
+
+.time-arrows {
+    position: absolute;
+    right: 5px;
+    /* Pegado a la derecha pero con margen */
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 10;
+    background: var(--color-bg-tertiary);
+}
+
+.time-arrow-btn {
+    background: var(--color-bg-secondary);
+    border: 1px solid rgba(194, 0, 120, 0.5);
+    color: var(--color-primary);
+    font-size: 0.6rem;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    width: 20px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.time-arrow-btn:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+.time-arrow-btn:active {
+    transform: scale(0.9);
+}
+
+.time-unit-label {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    font-weight: 700;
+    padding-right: 8px;
+}
+
+/* Alarma activa pulsante */
+@keyframes alarmPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(255, 50, 50, 0.6);
+        border-color: var(--color-danger);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(255, 50, 50, 1);
+        border-color: rgba(255, 50, 50, 1);
+    }
+}
+
+.timer-card-compact.alarm-active {
+    animation: alarmPulse 0.8s ease-in-out infinite;
+}
+
+/* ==================== COLORES DINÁMICOS POR TIPO ==================== */
+
+/* PLR - Rojo */
+.timer-card-compact.card-plr {
+    background: linear-gradient(135deg, hsl(0, 60%, 15%), hsl(0, 60%, 20%));
+    border-color: rgba(255, 50, 50, 0.4);
+}
+
+.timer-card-compact.card-plr:hover {
+    border-color: var(--color-danger);
+    box-shadow: 0 4px 15px rgba(255, 50, 50, 0.2);
+}
+
+.timer-card-compact.card-plr .study-type-compact {
+    color: var(--color-danger);
+}
+
+/* CTGN - Azul */
+.timer-card-compact.card-ctgn {
+    background: linear-gradient(135deg, hsl(210, 60%, 15%), hsl(210, 60%, 20%));
+    border-color: rgba(50, 150, 255, 0.4);
+}
+
+.timer-card-compact.card-ctgn:hover {
+    border-color: #4da6ff;
+    box-shadow: 0 4px 15px rgba(50, 150, 255, 0.2);
+}
+
+.timer-card-compact.card-ctgn .study-type-compact {
+    color: #4da6ff;
+}
+
+/* CTM - Amarillo */
+.timer-card-compact.card-ctm {
+    background: linear-gradient(135deg, hsl(45, 60%, 12%), hsl(45, 60%, 16%));
+    border-color: rgba(255, 200, 50, 0.4);
+}
+
+.timer-card-compact.card-ctm:hover {
+    border-color: #ffcc00;
+    box-shadow: 0 4px 15px rgba(255, 200, 50, 0.2);
+}
+
+.timer-card-compact.card-ctm .study-type-compact {
+    color: #ffcc00;
+}
+
+/* HPYLORI - Verde */
+.timer-card-compact.card-hpylori {
+    background: linear-gradient(135deg, hsl(140, 60%, 12%), hsl(140, 60%, 16%));
+    border-color: rgba(50, 200, 100, 0.4);
+}
+
+.timer-card-compact.card-hpylori:hover {
+    border-color: var(--color-success);
+    box-shadow: 0 4px 15px rgba(0, 200, 100, 0.25);
+}
+
+.timer-card-compact.card-hpylori .study-type-compact {
+    color: var(--color-success);
+}

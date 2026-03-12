@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Temporizador INDABI</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-container img {
+            max-width: 150px;
+            margin-bottom: 1rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #2a5298;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1e3c72;
+        }
+        #error-message {
+            color: #d9534f;
+            margin-top: 1rem;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <img src="logo.png" alt="Logo INDABI">
+        <h2>Acceso Laboratorios</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="tu@laboratorio.com">
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit">Entrar</button>
+            <p id="error-message">Credenciales incorrectas o cuenta inactiva.</p>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Configuración de Supabase (Se completará con el .env en producción)
+        const supabaseUrl = 'https://mdinmtifemdxpxyarjjg.supabase.co';
+        const supabaseKey = 'TU_ANON_KEY_AQUI'; // El usuario debe poner esto
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-message');
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) {
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            // Obtener el perfil para saber el laboratorio_id
+            const { data: perfil } = await supabase
+                .from('perfiles')
+                .select('laboratorio_id')
+                .eq('id', data.user.id)
+                .single();
+
+            if (perfil) {
+                localStorage.setItem('sb-token', data.session.access_token);
+                localStorage.setItem('lab-id', perfil.laboratorio_id);
+                window.location.href = 'index.html';
+            } else {
+                errorMsg.textContent = 'Error: No tienes un laboratorio asignado.';
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
