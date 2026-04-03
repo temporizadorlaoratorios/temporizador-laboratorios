@@ -228,7 +228,7 @@ function escapeHtml(text) {
 // ==================== SUPABASE DB & EVENTOS ====================
 async function loadInitialData() {
     // Cargar Timers
-    const { data: timersData } = await supabase
+    const { data: timersData } = await sb
         .from('timers')
         .select('*')
         .eq('laboratorio_id', labId === 'super-admin' ? null : labId); // SuperAdmin puede ver todos ajustando filtro si es necesario, pero labId manda
@@ -244,7 +244,7 @@ async function loadInitialData() {
     renderTimers();
 
     // Cargar Historial
-    const { data: historyData } = await supabase
+    const { data: historyData } = await sb
         .from('historial')
         .select('*')
         .eq('laboratorio_id', labId)
