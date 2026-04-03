@@ -165,6 +165,23 @@ function adjustTime(type, delta) {
     }
 }
 
+// AudioContext global reutilizable (evita crear uno nuevo cada beep)
+let globalAudioContext = null;
+function getAudioContext() {
+    if (!globalAudioContext || globalAudioContext.state === 'closed') {
+        globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (globalAudioContext.state === 'suspended') {
+        globalAudioContext.resume();
+    }
+    return globalAudioContext;
+}
+
+// Desbloquear AudioContext con la primera interacción del usuario
+document.addEventListener('click', () => {
+    getAudioContext();
+}, { once: true });
+
 // Alarma
 function startContinuousAlarm(timerId) {
     if (AppState.activeAlarms[timerId]) return;
@@ -173,7 +190,7 @@ function startContinuousAlarm(timerId) {
 
     const alarmInterval = setInterval(() => {
         try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioContext = getAudioContext();
             const frequencies = [900, 1100, 900, 1100];
             let currentTime = audioContext.currentTime;
 
@@ -190,7 +207,7 @@ function startContinuousAlarm(timerId) {
                 oscillator.start(startTime);
                 oscillator.stop(startTime + 0.18);
             });
-        } catch (e) {}
+        } catch (e) { console.warn('Error de audio:', e); }
     }, 1500);
 
     AppState.activeAlarms[timerId] = alarmInterval;
@@ -310,6 +327,10 @@ setInterval(async () => {
                 t.isRunning = false;
                 t.isCompleted = true;
                 
+                // Disparar alarma y notificación localmente
+                startContinuousAlarm(t.id);
+                showNotification(t);
+                
                 // Un cliente sube el cambio para evitar saturación
                 sb.from('timers').update({ 
                     remainingSeconds: 0, 
@@ -426,7 +447,11 @@ window.toggleTimer = async (id) => {
     if (!timer) return;
 
     if (timer.isRunning) {
-        // Pausar
+        // Pausar - actualizar UI localmente primero
+        timer.isRunning = false;
+        timer.isPaused = true;
+        timer.targetTime = null;
+        updateTimerDisplay(id);
         await sb.from('timers').update({
             isRunning: false,
             isPaused: true,
@@ -435,8 +460,12 @@ window.toggleTimer = async (id) => {
         }).eq('id', id);
         logHistoryLocally('PAUSADO', timer);
     } else {
-        // Iniciar
+        // Iniciar - actualizar UI localmente primero
         const targetTime = new Date(Date.now() + (timer.remainingSeconds * 1000)).toISOString();
+        timer.isRunning = true;
+        timer.isPaused = false;
+        timer.targetTime = targetTime;
+        updateTimerDisplay(id);
         await sb.from('timers').update({
             isRunning: true,
             isPaused: false,
@@ -448,7 +477,15 @@ window.toggleTimer = async (id) => {
 
 window.resetTimer = async (id) => {
     const timer = AppState.timers.find(t => t.id === id);
+    if (!timer) return;
     stopAlarm(id);
+    // Actualizar UI localmente primero
+    timer.remainingSeconds = timer.totalSeconds;
+    timer.isRunning = false;
+    timer.isPaused = false;
+    timer.isCompleted = false;
+    timer.targetTime = null;
+    updateTimerDisplay(id);
     await sb.from('timers').update({
         remainingSeconds: timer.totalSeconds,
         isRunning: false,
@@ -463,6 +500,9 @@ window.deleteTimer = async (id) => {
     if (confirm('¿Eliminar este temporizador?')) {
         const timer = AppState.timers.find(t => t.id === id);
         stopAlarm(id);
+        // Actualizar UI localmente sin depender de Realtime
+        AppState.timers = AppState.timers.filter(t => t.id !== id);
+        renderTimers();
         await sb.from('timers').delete().eq('id', id);
         if(timer) logHistoryLocally('ELIMINADO', timer);
     }
