@@ -269,7 +269,7 @@
         // ==================== SUPABASE INIT ====================
         const supabaseUrl = 'https://qhjrqfrsphctbdjubxpv.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoanJxZnJzcGhjdGJkanVieHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg5NzAsImV4cCI6MjA5MDgwNDk3MH0.fLF8SGXXE7BdbdzUHo7GiBM58BbZkUN89N8Cl1KnEHk';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         const token = localStorage.getItem('sb-token');
         if (!token) window.location.href = 'login.html';
@@ -280,9 +280,9 @@
 
         // ==================== CARGAR DATOS ====================
         async function refreshData() {
-            const { data: labs } = await supabase.from('laboratorios').select('*');
-            const { data: perfiles } = await supabase.from('perfiles').select('*');
-            const { data: timersActivos } = await supabase.from('timers').select('id, laboratorio_id').eq('isRunning', true);
+            const { data: labs } = await sb.from('laboratorios').select('*');
+            const { data: perfiles } = await sb.from('perfiles').select('*');
+            const { data: timersActivos } = await sb.from('timers').select('id, laboratorio_id').eq('isRunning', true);
             
             allLabs = labs || [];
             allPerfiles = perfiles || [];
@@ -407,18 +407,18 @@
 
             if (id) {
                 // Actualizar laboratorio existente
-                await supabase.from('laboratorios').update({ nombre, max_pcs }).eq('id', id);
+                await sb.from('laboratorios').update({ nombre, max_pcs }).eq('id', id);
                 // Actualizar el perfil asociado
                 const perfil = allPerfiles.find(p => p.laboratorio_id === id);
                 if (perfil) {
-                    await supabase.from('perfiles').update({ email, password }).eq('id', perfil.id);
+                    await sb.from('perfiles').update({ email, password }).eq('id', perfil.id);
                 }
                 alert('Laboratorio actualizado correctamente.');
             } else {
                 // Crear nuevo laboratorio
                 const newLabId = `lab-${Date.now()}`;
-                await supabase.from('laboratorios').insert({ id: newLabId, nombre, max_pcs, activo: true });
-                await supabase.from('perfiles').insert({
+                await sb.from('laboratorios').insert({ id: newLabId, nombre, max_pcs, activo: true });
+                await sb.from('perfiles').insert({
                     id: `user-${Date.now()}`,
                     email,
                     password,
@@ -440,7 +440,7 @@
             if (confirm('¿Actualizar tu perfil de administrador?')) {
                 const updateData = { email };
                 if (newPassword) updateData.password = newPassword;
-                await supabase.from('perfiles').update(updateData).eq('id', token);
+                await sb.from('perfiles').update(updateData).eq('id', token);
                 alert('Perfil actualizado.');
                 closeModal('modal-profile');
                 refreshData();
@@ -449,16 +449,16 @@
 
         async function deleteLab(id, name) {
             if (confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) {
-                await supabase.from('perfiles').delete().eq('laboratorio_id', id);
-                await supabase.from('timers').delete().eq('laboratorio_id', id);
-                await supabase.from('laboratorios').delete().eq('id', id);
+                await sb.from('perfiles').delete().eq('laboratorio_id', id);
+                await sb.from('timers').delete().eq('laboratorio_id', id);
+                await sb.from('laboratorios').delete().eq('id', id);
                 alert('Laboratorio eliminado.');
                 refreshData();
             }
         }
 
         async function toggleStatus(id, current) {
-            await supabase.from('laboratorios').update({ activo: !current }).eq('id', id);
+            await sb.from('laboratorios').update({ activo: !current }).eq('id', id);
             refreshData();
         }
 

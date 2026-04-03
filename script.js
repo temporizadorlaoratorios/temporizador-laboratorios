@@ -9,7 +9,7 @@ if (!token || !labId) {
 
 const supabaseUrl = 'https://qhjrqfrsphctbdjubxpv.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoanJxZnJzcGhjdGJkanVieHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg5NzAsImV4cCI6MjA5MDgwNDk3MH0.fLF8SGXXE7BdbdzUHo7GiBM58BbZkUN89N8Cl1KnEHk';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // ==================== INICIALIZACIÓN LOGO ====================
 function initLabBranding() {
@@ -82,7 +82,7 @@ document.addEventListener('click', (e) => {
 async function deleteLogo() {
     if (!confirm('¿Seguro que deseas eliminar el logo de tu laboratorio?')) return;
     try {
-        const { error } = await supabase.from('laboratorios').update({ logo: null }).eq('id', labId);
+        const { error } = await sb.from('laboratorios').update({ logo: null }).eq('id', labId);
         if (!error) {
             localStorage.removeItem('lab-logo');
             initLabBranding(); 
@@ -233,7 +233,7 @@ async function loadInitialData() {
         .select('*')
         .eq('laboratorio_id', labId === 'super-admin' ? null : labId); // SuperAdmin puede ver todos ajustando filtro si es necesario, pero labId manda
     
-    const { data: adminTimers } = await supabase.from('timers').select('*');    
+    const { data: adminTimers } = await sb.from('timers').select('*');    
 
     if (labId === 'super-admin') {
         AppState.timers = adminTimers || [];
@@ -253,7 +253,7 @@ async function loadInitialData() {
     if (historyData) HistoryManager.loadList(historyData);
 
     // Suscribirse a cambios en DB REALTIME (Reemplazo Socket.io)
-    supabase.channel('timers_channel')
+    sb.channel('timers_channel')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'timers', filter: labId !== 'super-admin' ? `laboratorio_id=eq.${labId}` : undefined }, payload => {
         if (payload.eventType === 'INSERT') {
             AppState.timers.push(payload.new);
@@ -291,7 +291,7 @@ async function logHistoryLocally(action, timer) {
         studyType: timer.studyType,
         timestamp: new Date().toISOString()
     };
-    await supabase.from('historial').insert(historyEvent);
+    await sb.from('historial').insert(historyEvent);
 }
 
 // MOTOR DEL RELOJ LOCAL
@@ -311,7 +311,7 @@ setInterval(async () => {
                 t.isCompleted = true;
                 
                 // Un cliente sube el cambio para evitar saturación
-                supabase.from('timers').update({ 
+                sb.from('timers').update({ 
                     remainingSeconds: 0, 
                     isRunning: false, 
                     isCompleted: true 
@@ -427,7 +427,7 @@ window.toggleTimer = async (id) => {
 
     if (timer.isRunning) {
         // Pausar
-        await supabase.from('timers').update({
+        await sb.from('timers').update({
             isRunning: false,
             isPaused: true,
             remainingSeconds: timer.remainingSeconds,
@@ -437,7 +437,7 @@ window.toggleTimer = async (id) => {
     } else {
         // Iniciar
         const targetTime = new Date(Date.now() + (timer.remainingSeconds * 1000)).toISOString();
-        await supabase.from('timers').update({
+        await sb.from('timers').update({
             isRunning: true,
             isPaused: false,
             targetTime: targetTime
@@ -449,7 +449,7 @@ window.toggleTimer = async (id) => {
 window.resetTimer = async (id) => {
     const timer = AppState.timers.find(t => t.id === id);
     stopAlarm(id);
-    await supabase.from('timers').update({
+    await sb.from('timers').update({
         remainingSeconds: timer.totalSeconds,
         isRunning: false,
         isPaused: false,
@@ -463,7 +463,7 @@ window.deleteTimer = async (id) => {
     if (confirm('¿Eliminar este temporizador?')) {
         const timer = AppState.timers.find(t => t.id === id);
         stopAlarm(id);
-        await supabase.from('timers').delete().eq('id', id);
+        await sb.from('timers').delete().eq('id', id);
         if(timer) logHistoryLocally('ELIMINADO', timer);
     }
 };
@@ -575,7 +575,7 @@ elements.form.addEventListener('submit', async (e) => {
         const targetTimeIso = new Date(Date.now() + (totalSeconds * 1000)).toISOString();
         const newTimerId = Date.now().toString();
         
-        await supabase.from('timers').insert({
+        await sb.from('timers').insert({
             id: newTimerId,
             laboratorio_id: labId,
             patientName,
@@ -681,9 +681,9 @@ document.getElementById('change-password-form')?.addEventListener('submit', asyn
     const newPass = document.getElementById('lab-new-password').value;
     
     // Verificamos password actual y actualizamos en Supabase
-    const { data: perfiles } = await supabase.from('perfiles').select('*').eq('id', token);
+    const { data: perfiles } = await sb.from('perfiles').select('*').eq('id', token);
     if(perfiles && perfiles.length > 0 && perfiles[0].password === oldPass) {
-        await supabase.from('perfiles').update({ password: newPass }).eq('id', token);
+        await sb.from('perfiles').update({ password: newPass }).eq('id', token);
         alert("Contraseña actualizada exitosamente.");
         closeChangePasswordModal();
     } else {
