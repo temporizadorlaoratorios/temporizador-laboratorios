@@ -61,6 +61,7 @@
 </head>
 
 <body>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <div class="background-gradient"></div>
     <div class="container">
         <header>
@@ -250,8 +251,6 @@
     </div>
     </main>
     </div>
-
-    <script src="/socket.io/socket.io.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')

@@ -144,6 +144,7 @@
     </style>
 </head>
 <body>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <div class="background-gradient"></div>
     <div class="login-container">
         <img src="logo.png" alt="Logo INDABI">
@@ -169,6 +170,11 @@
     </div>
 
     <script>
+        // Inicializar Supabase
+        const supabaseUrl = 'https://qhjrqfrsphctbdjubxpv.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFomanJxZnNwaGN0YmRqdWJ4cHYiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3NTIyODk3MCwiZXhwIjoyMDkwODA0OTcwfQ.fLF8SGXXE7BdbdzUHo7GiBM58BbZkUN89N8Cl1KnEHk';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
         // Lógica para mostrar/ocultar contraseña
         const togglePassword = document.getElementById('toggle-password');
         const passwordInput = document.getElementById('password');
@@ -202,31 +208,53 @@
             const errorMsg = document.getElementById('error-message');
 
             try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                
-                const data = await response.json();
+                const { data: perfiles, error } = await supabase
+                    .from('perfiles')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('password', password);
 
-                if (data.success) {
-                    localStorage.setItem('sb-token', data.token); // token es el ID local
-                    localStorage.setItem('lab-id', data.labId || 'super-admin');
-                    localStorage.setItem('lab-logo', data.labLogo || '');
-                    localStorage.setItem('lab-nombre', data.labNombre || '');
+                if (error) {
+                    errorMsg.textContent = 'Error de conexión con la base de datos.';
+                    errorMsg.style.display = 'block';
+                    return;
+                }
+
+                if (perfiles && perfiles.length > 0) {
+                    const user = perfiles[0];
+                    localStorage.setItem('sb-token', user.id);
+                    localStorage.setItem('lab-id', user.laboratorio_id || 'super-admin');
                     
-                    if (data.rol === 'super_admin' || data.labId === 'super-admin') {
+                    if (user.laboratorio_id && user.laboratorio_id !== 'super-admin') {
+                        const { data: labs } = await supabase
+                            .from('laboratorios')
+                            .select('nombre, logo, activo')
+                            .eq('id', user.laboratorio_id);
+                            
+                        if (labs && labs.length > 0) {
+                            if (!labs[0].activo) {
+                                errorMsg.textContent = 'Este laboratorio está inactivo.';
+                                errorMsg.style.display = 'block';
+                                return;
+                            }
+                            localStorage.setItem('lab-logo', labs[0].logo || '');
+                            localStorage.setItem('lab-nombre', labs[0].nombre || 'Laboratorio');
+                        }
+                    } else {
+                        localStorage.setItem('lab-nombre', 'Super Admin');
+                    }
+                    
+                    if (user.rol === 'super_admin' || user.laboratorio_id === 'super-admin') {
                         window.location.href = 'superadmin.html';
                     } else {
                         window.location.href = 'index.html';
                     }
                 } else {
-                    errorMsg.textContent = data.error || 'Credenciales incorrectas.';
+                    errorMsg.textContent = 'Credenciales incorrectas u ocurrio un error.';
                     errorMsg.style.display = 'block';
                 }
             } catch (err) {
-                errorMsg.textContent = 'Error de conexión con el servidor.';
+                errorMsg.textContent = 'Error de conexión servidor.';
                 errorMsg.style.display = 'block';
             }
         });

@@ -1,7 +1,16 @@
 node_modules/
 .env
+data/
 timers.json
 timers.backup.json
 timers_corrupt_*.json
 .DS_Store
 *.log
+migrate.js
+migrate_rest.js
+crear_admin.js
+server.js
+*.bat
+*.vbs
+temp_remove_bg.py
+CORRECCION TEMPORALIZADOR.txt
