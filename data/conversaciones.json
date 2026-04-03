@@ -1,0 +1,21 @@
+{
+  "conversaciones": [
+    {
+      "id": "1711234567890",
+      "tema": "Configuración inicial del Temporalizador INDABI",
+      "fecha": "2026-03-23T00:00:00.000Z",
+      "mensajes": [
+        { "role": "user", "content": "cd \"C:\\Temporalizador nuevo\"" },
+        { "role": "assistant", "content": "Exploré el proyecto Temporalizador INDABI - Sistema de temporizadores para laboratorios médicos. Server: Node.js + Express + Socket.IO, Puerto: 3001" },
+        { "role": "user", "content": "EN ESPAÑOL" },
+        { "role": "assistant", "content": "Temporalizador INDABI - Sistema de temporizadores para laboratorios médicos. Servidor: Node.js + Express + Socket.IO, Puerto: 3001" },
+        { "role": "user", "content": "QUE FUE LO ULTIMO QUE HABLAMOS CON EL AGENTE?" },
+        { "role": "assistant", "content": "Esta es una conversación nueva - no hay historial previo. Lo único que tenemos es el proyecto Temporalizador INDABI que acabamos de revisar." },
+        { "role": "user", "content": "QUIERO VER COMO GUARDAR LAS CONVERSACIONES QUE TENGAMOSSOBRE EL TEMPORIZADOR" },
+        { "role": "assistant", "content": "Actualmente no hay archivo de conversaciones guardado. Tenemos: 1) data/conversaciones.json, 2) data/chats/ por fecha. ¿Qué prefieres?" },
+        { "role": "user", "content": "EL QUE VOS QUIERAS, QUE GUARDE TODO LO QUE HABLAMOS" },
+        { "role": "assistant", "content": "Creé sistema de conversaciones: data/conversaciones.json + API endpoints en server.js (GET/POST /api/conversaciones)" }
+      ]
+    }
+  ]
+}

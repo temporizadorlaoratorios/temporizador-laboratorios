@@ -1,0 +1,490 @@
+[
+  {
+    "id": "1773828651314",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:10:51.314Z"
+  },
+  {
+    "id": "1773828659174",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "eduy",
+    "studyType": "ctgn",
+    "timestamp": "2026-03-18T10:10:59.174Z"
+  },
+  {
+    "id": "1773829863551",
+    "laboratorio_id": "lab-1",
+    "action": "COMPLETADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:31:03.552Z"
+  },
+  {
+    "id": "1773831228922",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "eduy",
+    "studyType": "ctgn",
+    "timestamp": "2026-03-18T10:53:48.922Z"
+  },
+  {
+    "id": "1773831231683",
+    "laboratorio_id": "lab-1",
+    "action": "REINICIADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:53:51.683Z"
+  },
+  {
+    "id": "1773831568074",
+    "laboratorio_id": "lab-1",
+    "action": "REINICIADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:59:28.074Z"
+  },
+  {
+    "id": "1773831568618",
+    "laboratorio_id": "lab-1",
+    "action": "INICIADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:59:28.618Z"
+  },
+  {
+    "id": "1773831571025",
+    "laboratorio_id": "lab-1",
+    "action": "PAUSADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:59:31.025Z"
+  },
+  {
+    "id": "1773831572977",
+    "laboratorio_id": "lab-1",
+    "action": "INICIADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:59:32.977Z"
+  },
+  {
+    "id": "1773831574449",
+    "laboratorio_id": "lab-1",
+    "action": "REINICIADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:59:34.449Z"
+  },
+  {
+    "id": "1773831577857",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "plr",
+    "timestamp": "2026-03-18T10:59:37.857Z"
+  },
+  {
+    "id": "1773831583829",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "ctgn",
+    "timestamp": "2026-03-18T10:59:43.829Z"
+  },
+  {
+    "id": "1773831590786",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T10:59:50.786Z"
+  },
+  {
+    "id": "1773831599271",
+    "laboratorio_id": "lab-1",
+    "action": "COMPLETADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T10:59:59.271Z"
+  },
+  {
+    "id": "1773831606266",
+    "laboratorio_id": "lab-1",
+    "action": "REINICIADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T11:00:06.266Z"
+  },
+  {
+    "id": "1773831607913",
+    "laboratorio_id": "lab-1",
+    "action": "INICIADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T11:00:07.913Z"
+  },
+  {
+    "id": "1773831610321",
+    "laboratorio_id": "lab-1",
+    "action": "PAUSADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T11:00:10.321Z"
+  },
+  {
+    "id": "1773831613049",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T11:00:13.049Z"
+  },
+  {
+    "id": "1773831625410",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T11:00:25.410Z"
+  },
+  {
+    "id": "1773831663748",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "CORTISOL",
+    "timestamp": "2026-03-18T11:01:03.748Z"
+  },
+  {
+    "id": "1773831667170",
+    "laboratorio_id": "lab-1",
+    "action": "REINICIADO",
+    "patientName": "edu",
+    "studyType": "CORTISOL",
+    "timestamp": "2026-03-18T11:01:07.170Z"
+  },
+  {
+    "id": "1773831670401",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "CORTISOL",
+    "timestamp": "2026-03-18T11:01:10.401Z"
+  },
+  {
+    "id": "1773831719103",
+    "laboratorio_id": "lab-1",
+    "action": "COMPLETADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T11:01:59.103Z"
+  },
+  {
+    "id": "1773831734737",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "ctm",
+    "timestamp": "2026-03-18T11:02:14.737Z"
+  },
+  {
+    "id": "1773831735970",
+    "laboratorio_id": "lab-1",
+    "action": "REINICIADO",
+    "patientName": "edu",
+    "studyType": "ctgn",
+    "timestamp": "2026-03-18T11:02:15.970Z"
+  },
+  {
+    "id": "1773831737721",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "ctgn",
+    "timestamp": "2026-03-18T11:02:17.721Z"
+  },
+  {
+    "id": "1773831952205",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "ed",
+    "studyType": "PLR",
+    "timestamp": "2026-03-18T11:05:52.205Z"
+  },
+  {
+    "id": "1773831994954",
+    "laboratorio_id": "lab-1",
+    "action": "REINICIADO",
+    "patientName": "ed",
+    "studyType": "PLR",
+    "timestamp": "2026-03-18T11:06:34.954Z"
+  },
+  {
+    "id": "1773831995841",
+    "laboratorio_id": "lab-1",
+    "action": "INICIADO",
+    "patientName": "ed",
+    "studyType": "PLR",
+    "timestamp": "2026-03-18T11:06:35.841Z"
+  },
+  {
+    "id": "1773832002387",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "CORTISOL",
+    "timestamp": "2026-03-18T11:06:42.387Z"
+  },
+  {
+    "id": "1773914729896",
+    "laboratorio_id": "lab-1",
+    "action": "COMPLETADO",
+    "patientName": "ed",
+    "studyType": "PLR",
+    "timestamp": "2026-03-19T10:05:29.896Z"
+  },
+  {
+    "id": "1773916272681",
+    "laboratorio_id": "super-admin",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-03-19T10:31:12.681Z"
+  },
+  {
+    "id": "1773916281957",
+    "laboratorio_id": "super-admin",
+    "action": "CREADO",
+    "patientName": "adsa",
+    "studyType": "asdas",
+    "timestamp": "2026-03-19T10:31:21.957Z"
+  },
+  {
+    "id": "1773916284392",
+    "laboratorio_id": "super-admin",
+    "action": "COMPLETADO",
+    "patientName": "adsa",
+    "studyType": "asdas",
+    "timestamp": "2026-03-19T10:31:24.392Z"
+  },
+  {
+    "id": "1773916290685",
+    "laboratorio_id": "super-admin",
+    "action": "ELIMINADO",
+    "patientName": "adsa",
+    "studyType": "asdas",
+    "timestamp": "2026-03-19T10:31:30.685Z"
+  },
+  {
+    "id": "1773916293339",
+    "laboratorio_id": "super-admin",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-03-19T10:31:33.339Z"
+  },
+  {
+    "id": "1774260162401",
+    "laboratorio_id": "super-admin",
+    "action": "CREADO",
+    "patientName": "EEE",
+    "studyType": "PLR",
+    "timestamp": "2026-03-23T10:02:42.401Z"
+  },
+  {
+    "id": "1774261370879",
+    "laboratorio_id": "super-admin",
+    "action": "COMPLETADO",
+    "patientName": "EEE",
+    "studyType": "PLR",
+    "timestamp": "2026-03-23T10:22:50.879Z"
+  },
+  {
+    "id": "1774261394741",
+    "laboratorio_id": "super-admin",
+    "action": "ELIMINADO",
+    "patientName": "EEE",
+    "studyType": "PLR",
+    "timestamp": "2026-03-23T10:23:14.741Z"
+  },
+  {
+    "id": "1774518737428",
+    "laboratorio_id": "lab-1",
+    "action": "PAUSADO",
+    "patientName": "edu",
+    "studyType": "CORTISOL",
+    "timestamp": "2026-03-26T09:52:17.428Z"
+  },
+  {
+    "id": "1774518741274",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "CORTISOL",
+    "timestamp": "2026-03-26T09:52:21.274Z"
+  },
+  {
+    "id": "1774518744578",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "ed",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T09:52:24.578Z"
+  },
+  {
+    "id": "1774518764860",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T09:52:44.860Z"
+  },
+  {
+    "id": "1774518834073",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T09:53:54.074Z"
+  },
+  {
+    "id": "1774522194098",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "asdas",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T10:49:54.098Z"
+  },
+  {
+    "id": "1774522197970",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "asdas",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T10:49:57.970Z"
+  },
+  {
+    "id": "1774556356410",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T20:19:16.410Z"
+  },
+  {
+    "id": "1774556381695",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "eeeee",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T20:19:41.695Z"
+  },
+  {
+    "id": "1774556386641",
+    "laboratorio_id": "lab-1",
+    "action": "COMPLETADO",
+    "patientName": "eeeee",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T20:19:46.641Z"
+  },
+  {
+    "id": "1774556392878",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "eeeee",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T20:19:52.878Z"
+  },
+  {
+    "id": "1774556395654",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-03-26T20:19:55.654Z"
+  },
+  {
+    "id": "1775033711681",
+    "laboratorio_id": "super-admin",
+    "action": "CREADO",
+    "patientName": "sadsa",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T08:55:11.681Z"
+  },
+  {
+    "id": "1775033821008",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T08:57:01.008Z"
+  },
+  {
+    "id": "1775033838366",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T08:57:18.366Z"
+  },
+  {
+    "id": "1775033840676",
+    "laboratorio_id": "lab-1",
+    "action": "COMPLETADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T08:57:20.676Z"
+  },
+  {
+    "id": "1775033846278",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T08:57:26.278Z"
+  },
+  {
+    "id": "1775033850237",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T08:57:30.237Z"
+  },
+  {
+    "id": "1775034919563",
+    "laboratorio_id": "super-admin",
+    "action": "COMPLETADO",
+    "patientName": "sadsa",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T09:15:19.563Z"
+  },
+  {
+    "id": "1775035825834",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "asdas",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T09:30:25.834Z"
+  },
+  {
+    "id": "1775035828358",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "asdas",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T09:30:28.358Z"
+  },
+  {
+    "id": "1775039427176",
+    "laboratorio_id": "super-admin",
+    "action": "ELIMINADO",
+    "patientName": "sadsa",
+    "studyType": "PLR",
+    "timestamp": "2026-04-01T10:30:27.177Z"
+  }
+]

@@ -5,23 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin - Gestión de Laboratorios</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="icon_transparente.png">
+    <link rel="shortcut icon" href="icono.ico">
     <style>
-        body {
-            background-color: #f4f7f9;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-        .admin-header {
-            background: #1e3c72;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -29,160 +16,300 @@
             margin-bottom: 30px;
         }
         .stat-card {
-            background: white;
+            background: var(--color-bg-card);
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             text-align: center;
         }
-        .stat-card h3 { margin: 0; color: #666; font-size: 0.9rem; }
-        .stat-card p { margin: 10px 0 0; font-size: 1.5rem; font-weight: bold; color: #1e3c72; }
+        .stat-card h3 { margin: 0 0 10px 0; color: var(--color-text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;}
+        .stat-card p { 
+            margin: 0; 
+            font-size: 2.5rem; 
+            font-family: var(--font-mono);
+            font-weight: bold; 
+            background: var(--gradient-primary); 
+            -webkit-background-clip: text; 
+            background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
 
         .lab-table-container {
-            background: white;
+            background: var(--color-bg-secondary);
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .lab-table-container h2 {
+            color: var(--color-primary);
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
         }
         th, td {
             text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+            padding: 14px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--color-text-primary);
         }
-        th { background-color: #f8f9fa; font-weight: 600; color: #444; }
+        th { 
+            background-color: var(--color-bg-tertiary); 
+            font-weight: 600; 
+            color: var(--color-text-secondary); 
+            text-transform: uppercase; 
+            font-size: 0.85rem; 
+            letter-spacing: 0.05em;
+        }
         .badge {
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 0.8rem;
             font-weight: bold;
         }
-        .badge-online { background: #e6fffa; color: #38b2ac; }
-        .badge-offline { background: #fff5f5; color: #f56565; }
-        .btn-action {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: opacity 0.2s;
-        }
-        .btn-edit { background: #edf2f7; color: #4a5568; }
-        .btn-active { background: #c6f6d5; color: #2f855a; }
-        .btn-inactive { background: #fed7d7; color: #c53030; }
+        .badge-online { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid #2ecc71; }
+        .badge-offline { background: rgba(255, 100, 100, 0.15); color: var(--color-danger); border: 1px solid var(--color-danger); }
         
         #modal-edit {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.8);
             justify-content: center;
             align-items: center;
+            backdrop-filter: blur(5px);
+            z-index: 1000;
         }
         .modal-content {
-            background: white;
+            background: var(--color-bg-secondary);
             padding: 30px;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--color-primary);
+        }
+        .admin-actions {
+            display: flex; gap: 8px; justify-content: center; margin-top: 15px; margin-bottom: 30px;
+        }
+
+        /* Botón de ojito para la contraseña */
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--color-primary); /* Color fucsia del tema */
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .toggle-password:hover {
+            opacity: 1;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .toggle-password svg {
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div class="admin-header">
-        <h1>Panel de Control Global - Eduardo</h1>
-        <button onclick="logout()" class="btn-action btn-inactive">Cerrar Sesión</button>
-    </div>
+    <div class="background-gradient"></div>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="INDABI" class="app-logo">
+            </div>
+            <h1 class="app-title-text" style="font-size: 2.2rem;">Panel de Control Global</h1>
+            <div class="admin-actions">
+                <button onclick="window.open('index.html', '_blank')" class="history-btn-blue"> Abrir Temporizador </button>
+                <button onclick="openProfileModal()" class="preset-btn-compact" style="border-color: var(--color-primary); color: var(--color-primary);"> Mi Perfil </button>
+                <button onclick="logout()" class="preset-btn-compact" style="border-color: var(--color-danger); color: var(--color-danger);"> Cerrar Sesión </button>
+            </div>
+        </header>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <h3>Laboratorios Totales</h3>
-            <p id="stat-total-labs">0</p>
-        </div>
-        <div class="stat-card">
-            <h3>Conexiones Activas</h3>
-            <p id="stat-active-conn">0</p>
-        </div>
-        <div class="stat-card">
-            <h3>Laboratorios Online</h3>
-            <p id="stat-online-labs">0</p>
-        </div>
-    </div>
-
-    <div class="lab-table-container">
-        <h2>Gestión de Clientes</h2>
-        <table id="lab-table">
-            <thead>
-                <tr>
-                    <th>Laboratorio</th>
-                    <th>Estado</th>
-                    <th>PCs Activas / Máx</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="lab-list">
-                <!-- Se llena dinámicamente -->
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Modal para editar límite -->
-    <div id="modal-edit">
-        <div class="modal-content">
-            <h3>Editar Límite de PCs</h3>
-            <form id="edit-limit-form">
-                <input type="hidden" id="edit-lab-id">
-                <p>Laboratorio: <b id="edit-lab-name"></b></p>
-                <div style="margin: 15px 0;">
-                    <label>Máximo de PCs:</label>
-                    <input type="number" id="edit-max-pcs" min="1" step="1" style="width: 100%; padding: 8px; margin-top: 5px;">
+        <main class="main-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Laboratorios Totales</h3>
+                    <p id="stat-total-labs">0</p>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn-action btn-active" style="flex: 1;">Guardar</button>
-                    <button type="button" onclick="closeModal()" class="btn-action btn-edit" style="flex: 1;">Cancelar</button>
+                <div class="stat-card">
+                    <h3>Conexiones Activas</h3>
+                    <p id="stat-active-conn">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Laboratorios Online</h3>
+                    <p id="stat-online-labs">0</p>
+                </div>
+            </div>
+
+            <div class="lab-table-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Gestión de Clientes</h2>
+                    <button onclick="openCreateModal()" class="submit-btn-compact" style="width: auto; padding: 0 20px;">+ Nuevo Laboratorio</button>
+                </div>
+                <table id="lab-table">
+                    <thead>
+                        <tr>
+                            <th>Laboratorio</th>
+                            <th>Email Acceso</th>
+                            <th>Contraseña</th>
+                            <th>Estado</th>
+                            <th>PCs / Máx</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lab-list">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para editar/crear laboratorio -->
+    <div id="modal-lab">
+        <div class="modal-content">
+            <h3 id="modal-lab-title">Gestión de Laboratorio</h3>
+            <form id="lab-form">
+                <input type="hidden" id="lab-id">
+                <div style="margin: 15px 0;">
+                    <label class="form-label">Nombre del Laboratorio:</label>
+                    <input type="text" id="lab-nombre" required class="form-input-compact" style="width: 100%; margin-top: 5px;">
+                </div>
+                <div style="margin: 15px 0;">
+                    <label class="form-label">Email de Acceso:</label>
+                    <input type="email" id="lab-email" required class="form-input-compact" style="width: 100%; margin-top: 5px;">
+                </div>
+                <div style="margin: 15px 0;">
+                    <label class="form-label">Contraseña:</label>
+                    <div style="position: relative; margin-top: 5px;">
+                        <input type="password" id="lab-password" required class="form-input-compact" style="width: 100%; padding-right: 40px;">
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('lab-password', this)" id="toggle-lab-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div style="margin: 15px 0;">
+                    <label class="form-label">Máximo de PCs:</label>
+                    <input type="number" id="lab-max-pcs" min="1" step="1" required class="form-input-compact" style="width: 100%; margin-top: 5px;">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 25px;">
+                    <button type="button" onclick="closeModal('modal-lab')" class="control-btn-compact control-btn-secondary-compact" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="submit-btn-compact" style="flex: 1; padding: 10px;">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Modal para perfil admin (email y clave) -->
+    <div id="modal-profile">
+        <div class="modal-content">
+            <h3>Mi Perfil de Administrador</h3>
+            <form id="admin-profile-form">
+                <div style="margin: 15px 0;">
+                    <label class="form-label">Email de Administrador:</label>
+                    <input type="email" id="admin-email" required class="form-input-compact" style="width: 100%; margin-top: 5px;">
+                </div>
+                <div style="margin: 15px 0;">
+                    <label class="form-label">Contraseña Actual:</label>
+                    <div style="position: relative; margin-top: 5px;">
+                        <input type="password" id="admin-current-password" class="form-input-compact" style="width: 100%; padding-right: 40px;" readonly>
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('admin-current-password', this)" id="toggle-current-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div style="margin: 15px 0;">
+                    <label class="form-label">Nueva Contraseña:</label>
+                    <div style="position: relative; margin-top: 5px;">
+                        <input type="password" id="admin-new-password" class="form-input-compact" style="width: 100%; padding-right: 40px;">
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('admin-new-password', this)" id="toggle-new-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 25px;">
+                    <button type="button" onclick="closeModal('modal-profile')" class="control-btn-compact control-btn-secondary-compact" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="submit-btn-compact" style="flex: 1; padding: 10px;">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .form-label { color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
+        #modal-lab, #modal-profile {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+        }
+    </style>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const token = localStorage.getItem('sb-token');
         if (!token) window.location.href = 'login.html';
 
-        const supabaseUrl = 'https://mdinmtifemdxpxyarjjg.supabase.co';
-        const supabaseKey = 'TU_ANON_KEY_AQUI'; 
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        let currentAdminProfile = null;
 
         const socket = io({
             auth: { token: token, labId: 'super-admin' }
         });
 
-        async function init() {
-            // Verificar si es Super Admin
-            const { data: { user } } = await supabase.auth.getUser(token);
-            const { data: perfil } = await supabase.from('perfiles').select('rol').eq('id', user.id).single();
-            
-            if (!perfil || perfil.rol !== 'super_admin') {
-                alert('No tienes permisos de Super Admin');
-                window.location.href = 'index.html';
-            }
-
+        socket.on('connect', () => {
             refreshData();
-        }
+        });
 
-        async function refreshData() {
-            const { data: labs } = await supabase.from('laboratorios').select('*');
+        socket.on('disconnect', () => {
+            console.log("Desconectado de servidor local");
+        });
+
+        function refreshData() {
             socket.emit('get_admin_stats');
         }
 
         socket.on('admin_stats_update', (stats) => {
             renderLabs(stats);
             updateStats(stats);
+            if (stats.superAdmin) {
+                currentAdminProfile = stats.superAdmin;
+            }
         });
 
         function renderLabs(stats) {
@@ -193,13 +320,18 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${lab.nombre}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.9rem;">${lab.email}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.9rem;">${lab.password}</td>
                     <td><span class="badge ${lab.online ? 'badge-online' : 'badge-offline'}">${lab.online ? 'ONLINE' : 'OFFLINE'}</span></td>
                     <td>${lab.active_pcs} / ${lab.max_pcs}</td>
                     <td>
-                        <button class="btn-action btn-edit" onclick="openModal('${lab.id}', '${lab.nombre}', ${lab.max_pcs})">Editar Límite</button>
-                        <button class="btn-action ${lab.activo ? 'btn-inactive' : 'btn-active'}" onclick="toggleStatus('${lab.id}', ${lab.activo})">
-                            ${lab.activo ? 'Desactivar' : 'Activar'}
-                        </button>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="control-btn-compact control-btn-secondary-compact" onclick='openEditModal(${JSON.stringify(lab)})'>Editar</button>
+                            <button class="control-btn-compact ${lab.activo ? 'control-btn-danger-compact' : 'history-btn-blue'}" onclick="toggleStatus('${lab.id}', ${lab.activo})">
+                                ${lab.activo ? 'Desactivar' : 'Activar'}
+                            </button>
+                            <button class="control-btn-compact control-btn-danger-compact" onclick="deleteLab('${lab.id}', '${lab.nombre}')">Eliminar</button>
+                        </div>
                     </td>
                 `;
                 list.appendChild(tr);
@@ -212,41 +344,138 @@
             document.getElementById('stat-online-labs').textContent = stats.labs.filter(l => l.online).length;
         }
 
-        function openModal(id, name, max) {
-            document.getElementById('edit-lab-id').value = id;
-            document.getElementById('edit-lab-name').textContent = name;
-            document.getElementById('edit-max-pcs').value = max;
-            document.getElementById('modal-edit').style.display = 'flex';
+        function openCreateModal() {
+            resetPasswordInputs();
+            document.getElementById('modal-lab-title').textContent = 'Nuevo Laboratorio';
+            document.getElementById('lab-id').value = '';
+            document.getElementById('lab-nombre').value = '';
+            document.getElementById('lab-email').value = '';
+            document.getElementById('lab-password').value = '';
+            document.getElementById('lab-max-pcs').value = 3;
+            document.getElementById('modal-lab').style.display = 'flex';
         }
 
-        function closeModal() {
-            document.getElementById('modal-edit').style.display = 'none';
+        function openEditModal(lab) {
+            resetPasswordInputs();
+            document.getElementById('modal-lab-title').textContent = 'Editar Laboratorio';
+            document.getElementById('lab-id').value = lab.id;
+            document.getElementById('lab-nombre').value = lab.nombre;
+            document.getElementById('lab-email').value = lab.email;
+            document.getElementById('lab-password').value = lab.password;
+            document.getElementById('lab-max-pcs').value = lab.max_pcs;
+            document.getElementById('modal-lab').style.display = 'flex';
         }
 
-        document.getElementById('edit-limit-form').onsubmit = async (e) => {
+        function openProfileModal() {
+            resetPasswordInputs();
+            if (currentAdminProfile) {
+                document.getElementById('admin-email').value = currentAdminProfile.email || '';
+                document.getElementById('admin-current-password').value = currentAdminProfile.password || '';
+            } else {
+                document.getElementById('admin-email').value = '';
+                document.getElementById('admin-current-password').value = '';
+            }
+            document.getElementById('admin-new-password').value = '';
+            document.getElementById('modal-profile').style.display = 'flex';
+        }
+
+        const eyeSvg = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+        `;
+        const eyeSlashSvg = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                <line x1="2" x2="22" y1="2" y2="22"/>
+            </svg>
+        `;
+
+        function resetPasswordInputs() {
+            // Reset lab password input
+            const labInput = document.getElementById('lab-password');
+            const labBtn = document.getElementById('toggle-lab-btn');
+            if(labInput && labBtn) { labInput.type = 'password'; labBtn.innerHTML = eyeSvg; }
+
+            // Reset profile password inputs
+            const currInput = document.getElementById('admin-current-password');
+            const currBtn = document.getElementById('toggle-current-btn');
+            if(currInput && currBtn) { currInput.type = 'password'; currBtn.innerHTML = eyeSvg; }
+            
+            const newInput = document.getElementById('admin-new-password');
+            const newBtn = document.getElementById('toggle-new-btn');
+            if(newInput && newBtn) { newInput.type = 'password'; newBtn.innerHTML = eyeSvg; }
+        }
+
+        function togglePasswordVisibility(inputId, btnEl) {
+            const passwordInput = document.getElementById(inputId);
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                btnEl.innerHTML = eyeSlashSvg;
+            } else {
+                passwordInput.type = 'password';
+                btnEl.innerHTML = eyeSvg;
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        document.getElementById('lab-form').onsubmit = (e) => {
             e.preventDefault();
-            const id = document.getElementById('edit-lab-id').value;
-            const max = document.getElementById('edit-max-pcs').value;
+            const id = document.getElementById('lab-id').value;
+            const data = {
+                nombre: document.getElementById('lab-nombre').value,
+                email: document.getElementById('lab-email').value,
+                password: document.getElementById('lab-password').value,
+                max_pcs: document.getElementById('lab-max-pcs').value
+            };
+            
+            if (id) {
+                socket.emit('update_lab', { id, ...data });
+            } else {
+                socket.emit('create_lab', data);
+            }
+            closeModal('modal-lab');
+            setTimeout(refreshData, 300);
+        };
 
-            const { error } = await supabase.from('laboratorios').update({ max_pcs: max }).eq('id', id);
-            if (!error) {
-                closeModal();
-                refreshData();
-                socket.emit('refresh_limits'); // Avisar al servidor que cambie los límites en memoria
+        document.getElementById('admin-profile-form').onsubmit = (e) => {
+            e.preventDefault();
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-new-password').value;
+            
+            if (confirm('¿Estás seguro de que quieres actualizar tu perfil?')) {
+                socket.emit('update_admin_profile', { email, password });
+                closeModal('modal-profile');
+                document.getElementById('admin-new-password').value = '';
             }
         };
 
-        async function toggleStatus(id, current) {
-            await supabase.from('laboratorios').update({ activo: !current }).eq('id', id);
+        function deleteLab(id, name) {
+            if (confirm(`¿Estás COMPLETAMENTE seguro de eliminar el laboratorio "${name}"? Esta acción no se puede deshacer y borrará todos sus perfiles asociados.`)) {
+                socket.emit('delete_lab', id);
+            }
+        }
+
+        socket.on('admin_action_success', (msg) => {
+            alert(msg);
             refreshData();
+        });
+
+        function toggleStatus(id, current) {
+            socket.emit('toggle_lab_status', { id, status: !current });
+            setTimeout(refreshData, 200);
         }
 
         function logout() {
             localStorage.clear();
             window.location.href = 'login.html';
         }
-
-        init();
     </script>
 </body>
 </html>

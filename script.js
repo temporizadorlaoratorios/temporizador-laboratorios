@@ -15,6 +15,151 @@ const socket = io({
     }
 });
 
+// Inicialización de Logo y Título
+function initLabBranding() {
+    const labLogo = localStorage.getItem('lab-logo');
+    const labNombre = localStorage.getItem('lab-nombre');
+    const logoImg = document.getElementById('app-logo');
+    const logoPlaceholder = document.getElementById('logo-placeholder');
+    const appTitle = document.getElementById('app-title-display');
+
+    if (labNombre && appTitle) {
+        appTitle.textContent = labNombre.toUpperCase();
+    }
+
+    if (labId === 'super-admin') {
+        if (logoImg) {
+            logoImg.src = 'logo.png';
+            logoImg.style.display = 'block';
+        }
+        if (logoPlaceholder) logoPlaceholder.style.display = 'none';
+    } else if (labLogo) {
+        if (logoImg) {
+            logoImg.src = labLogo;
+            logoImg.style.display = 'block';
+        }
+        if (logoPlaceholder) logoPlaceholder.style.display = 'none';
+    } else {
+        if (logoImg) logoImg.style.display = 'none';
+        if (logoPlaceholder) logoPlaceholder.style.display = 'block';
+    }
+}
+
+// Funciones para el Menú de Logo
+function handleLogoClick(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    if (labId === 'super-admin') return; // Super admin no puede cambiar su logo aquí
+
+    const logoImg = document.getElementById('app-logo');
+    const logoMenu = document.getElementById('logo-options-menu');
+    
+    // Si no hay logo (está visible el placeholder de cargar), abrir dialogo de archivo directo
+    if (logoImg.style.display === 'none') {
+        document.getElementById('logo-upload').click();
+    } else {
+        // Si hay logo, alternar el menú
+        if (logoMenu.style.display === 'flex') {
+            closeLogoMenu();
+        } else {
+            logoMenu.style.display = 'flex';
+        }
+    }
+}
+
+function closeLogoMenu() {
+    const logoMenu = document.getElementById('logo-options-menu');
+    if (logoMenu) logoMenu.style.display = 'none';
+}
+
+// Cerrar menú al hacer clic fuera
+document.addEventListener('click', (e) => {
+    const logoContainer = document.getElementById('logo-container');
+    const logoMenu = document.getElementById('logo-options-menu');
+    
+    if (logoMenu && logoMenu.style.display === 'flex') {
+        if (!logoContainer.contains(e.target)) {
+            closeLogoMenu();
+        }
+    }
+});
+
+async function deleteLogo() {
+    if (!confirm('¿Seguro que deseas eliminar el logo de tu laboratorio?')) return;
+
+    try {
+        const response = await fetch('/api/delete-logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ labId: labId })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            localStorage.removeItem('lab-logo');
+            initLabBranding(); // Volver a mostrar el placeholder
+            alert('Logo eliminado correctamente');
+        } else {
+            alert('Error al eliminar logo: ' + data.error);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error de conexión al eliminar logo');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initLabBranding();
+    
+    // Actualizar contenedor principal visualmente si es super admin para no mostrar hover
+    const logoContainer = document.getElementById('logo-container');
+    if (labId === 'super-admin' && logoContainer) {
+        logoContainer.classList.remove('interactive-logo');
+        logoContainer.style.cursor = 'default';
+        logoContainer.onclick = null;
+    }
+    
+    const logoUpload = document.getElementById('logo-upload');
+    if (logoUpload) {
+        logoUpload.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const base64 = event.target.result;
+                try {
+                    const response = await fetch('/api/upload-logo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            labId: labId,
+                            image: base64,
+                            fileName: file.name
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        const newLogoPath = `${data.logo}?v=${new Date().getTime()}`;
+                        localStorage.setItem('lab-logo', newLogoPath);
+                        initLabBranding();
+                        alert('Logo actualizado correctamente');
+                    } else {
+                        alert('Error al subir logo: ' + data.error);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Error de conexión al subir logo');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+
 // ==================== ESTADO GLOBAL ====================
 const AppState = {
     timers: [],
@@ -276,10 +421,11 @@ function createTimerCard(timer) {
 }
 
 function updateTimerDisplay(timerId) {
-    const timer = AppState.timers.find(t => t.id === timerId);
+    const strId = String(timerId);
+    const timer = AppState.timers.find(t => t.id === strId);
     if (!timer) return;
 
-    const card = document.getElementById(`timer-${timerId}`);
+    const card = document.getElementById(`timer-${strId}`);
     if (!card) return;
 
     const timeDisplay = card.querySelector(`.timer-time-compact[data-timer-id="${timerId}"]`);
@@ -318,30 +464,33 @@ function updateTimerDisplay(timerId) {
 // ==================== ACCIONES DE USUARIO ====================
 
 function toggleTimer(id) {
-    const timer = AppState.timers.find(t => t.id === id);
+    const strId = String(id);
+    const timer = AppState.timers.find(t => t.id === strId);
     if (!timer) return;
 
     if (timer.isRunning) {
-        socket.emit('stopTimer', id);
+        socket.emit('stopTimer', strId);
     } else {
-        socket.emit('startTimer', id);
+        socket.emit('startTimer', strId);
     }
 }
 
 function resetTimer(id) {
-    stopAlarm(id);
-    socket.emit('resetTimer', id);
+    const strId = String(id);
+    stopAlarm(strId);
+    socket.emit('resetTimer', strId);
 }
 
 function deleteTimer(id) {
+    const strId = String(id);
     if (confirm('¿Eliminar este temporizador?')) {
-        stopAlarm(id);
-        socket.emit('deleteTimer', id);
+        stopAlarm(strId);
+        socket.emit('deleteTimer', strId);
     }
 }
 
 function handleStopAlarm(id) {
-    stopAlarm(id);
+    stopAlarm(String(id));
 }
 
 // ==================== FORMULARIO ====================
@@ -770,3 +919,104 @@ socket.on('historyUpdate', (event) => {
 });
 
 console.log('✅ Cliente de temporizadores conectado al servidor');
+
+// ==================== CERRAR SESIÓN ====================
+function logout() {
+    if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+}
+
+// ==================== MENÚ DE OPCIONES Y CONTRASEÑA ====================
+function toggleOptionsMenu(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('options-dropdown');
+    if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.options-wrapper');
+    const dropdown = document.getElementById('options-dropdown');
+    if (wrapper && !wrapper.contains(e.target) && dropdown) {
+        dropdown.style.display = 'none';
+    }
+});
+
+const eyeSvgCode = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+        <circle cx="12" cy="12" r="3"/>
+    </svg>
+`;
+const eyeSlashSvgCode = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+        <line x1="2" x2="22" y1="2" y2="22"/>
+    </svg>
+`;
+
+function togglePassVisibility(inputId, btnEl) {
+    const passwordInput = document.getElementById(inputId);
+    if (!passwordInput) return;
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        btnEl.innerHTML = eyeSlashSvgCode;
+    } else {
+        passwordInput.type = 'password';
+        btnEl.innerHTML = eyeSvgCode;
+    }
+}
+
+function openChangePasswordModal() {
+    const dropdown = document.getElementById('options-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+    
+    document.getElementById('modal-change-password').style.display = 'flex';
+    
+    const oldPassInput = document.getElementById('lab-old-password');
+    const newPassInput = document.getElementById('lab-new-password');
+    const oldToggleBtn = document.getElementById('toggle-lab-old-pass-btn');
+    const newToggleBtn = document.getElementById('toggle-lab-pass-btn');
+
+    if(oldPassInput && oldToggleBtn) {
+        oldPassInput.value = '';
+        oldPassInput.type = 'password';
+        oldToggleBtn.innerHTML = eyeSvgCode;
+    }
+    
+    if(newPassInput && newToggleBtn) {
+        newPassInput.value = '';
+        newPassInput.type = 'password';
+        newToggleBtn.innerHTML = eyeSvgCode;
+    }
+}
+
+function closeChangePasswordModal() {
+    document.getElementById('modal-change-password').style.display = 'none';
+}
+
+const changePasswordForm = document.getElementById('change-password-form');
+if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const oldPassword = document.getElementById('lab-old-password').value;
+        const newPassword = document.getElementById('lab-new-password').value;
+        if(confirm('¿Estás seguro de que deseas cambiar tu contraseña? La próxima vez deberás iniciar con esta nueva clave.')) {
+            socket.emit('change_own_password', { oldPassword, newPassword });
+        }
+    });
+}
+
+socket.on('password_change_success', (msg) => {
+    alert(msg);
+    closeChangePasswordModal();
+});
+
+socket.on('password_change_error', (msg) => {
+    alert("Error: " + msg);
+});
