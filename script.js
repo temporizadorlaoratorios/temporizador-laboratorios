@@ -244,20 +244,17 @@ function escapeHtml(text) {
 
 // ==================== SUPABASE DB & EVENTOS ====================
 async function loadInitialData() {
-    // Cargar Timers
-    const { data: timersData } = await sb
+    // Cargar Timers - Todos filtran por su propio labId (incluido super-admin para aislamiento)
+    const { data: timersData, error } = await sb
         .from('timers')
         .select('*')
-        .eq('laboratorio_id', labId === 'super-admin' ? null : labId); // SuperAdmin puede ver todos ajustando filtro si es necesario, pero labId manda
+        .eq('laboratorio_id', labId);
     
-    const { data: adminTimers } = await sb.from('timers').select('*');    
-
-    if (labId === 'super-admin') {
-        AppState.timers = adminTimers || [];
-    } else {
-        AppState.timers = timersData || [];
+    if (error) {
+        console.error('Error cargando timers:', error);
     }
 
+    AppState.timers = timersData || [];
     renderTimers();
 
     // Cargar Historial
@@ -270,8 +267,14 @@ async function loadInitialData() {
     if (historyData) HistoryManager.loadList(historyData);
 
     // Suscribirse a cambios en DB REALTIME (Reemplazo Socket.io)
+    // Cada lab suscripto únicamente a sus propios cambios para aislamiento total
     sb.channel('timers_channel')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'timers', filter: labId !== 'super-admin' ? `laboratorio_id=eq.${labId}` : undefined }, payload => {
+    .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'timers', 
+        filter: `laboratorio_id=eq.${labId}` 
+    }, payload => {
         if (payload.eventType === 'INSERT') {
             AppState.timers.push(payload.new);
             renderTimers();
@@ -293,7 +296,12 @@ async function loadInitialData() {
             renderTimers();
         }
     })
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'historial', filter: labId !== 'super-admin' ? `laboratorio_id=eq.${labId}` : undefined }, payload => {
+    .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'historial', 
+        filter: `laboratorio_id=eq.${labId}` 
+    }, payload => {
         HistoryManager.addEvent(payload.new);
     })
     .subscribe();
