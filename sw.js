@@ -1,4 +1,4 @@
-const CACHE_NAME = 'temporalizador-v5';
+const CACHE_NAME = 'temporalizador-v6';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -6,7 +6,6 @@ const urlsToCache = [
     '/logo-styles.css',
     '/time-controls.css',
     '/script.js',
-    '/timer-worker.js',
     '/logo.png',
     '/icon_transparente.png',
     '/icono.ico',
@@ -35,14 +34,21 @@ self.addEventListener('activate', event => {
     );
 });
 
+// Network-first: siempre intenta la red, solo usa cache si no hay conexión
 self.addEventListener('fetch', event => {
     event.respondWith(
-        caches.match(event.request)
+        fetch(event.request)
             .then(response => {
-                if (response) {
-                    return response;
-                }
-                return fetch(event.request);
+                // Guardar copia fresca en cache
+                const responseClone = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseClone);
+                });
+                return response;
+            })
+            .catch(() => {
+                // Sin conexión: usar cache
+                return caches.match(event.request);
             })
     );
 });
