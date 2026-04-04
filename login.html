@@ -171,6 +171,58 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            // ==================== DETECCIÓN PWA ACTIVA ====================
+            const IS_PWA = window.matchMedia('(display-mode: standalone)').matches 
+                        || window.navigator.standalone === true;
+
+            const pwaChannel = new BroadcastChannel('pwa-session');
+
+            // Si soy PWA, establecer heartbeat
+            if (IS_PWA) {
+                localStorage.setItem('pwa-active', Date.now().toString());
+                setInterval(() => {
+                    localStorage.setItem('pwa-active', Date.now().toString());
+                }, 3000);
+                window.addEventListener('beforeunload', () => {
+                    localStorage.removeItem('pwa-active');
+                    pwaChannel.postMessage({ type: 'pwa-closed' });
+                });
+            }
+
+            // Si el navegador fue expulsado por la PWA, mostrar cartel
+            const urlParams = new URLSearchParams(window.location.search);
+            const errorMsg = document.getElementById('error-message');
+            
+            if (urlParams.get('reason') === 'pwa-active') {
+                errorMsg.textContent = '📱 La aplicación PWA está abierta. Usá la app instalada para evitar conflictos de sonido.';
+                errorMsg.style.display = 'block';
+                errorMsg.style.background = 'rgba(255, 165, 0, 0.15)';
+                errorMsg.style.borderColor = 'rgba(255, 165, 0, 0.4)';
+                errorMsg.style.color = '#ffb347';
+            }
+
+            // Escuchar si la PWA se abre mientras estamos en login
+            if (!IS_PWA) {
+                pwaChannel.onmessage = (event) => {
+                    if (event.data.type === 'pwa-takeover') {
+                        errorMsg.textContent = '📱 La aplicación PWA se acaba de abrir. Usá la app instalada.';
+                        errorMsg.style.display = 'block';
+                        errorMsg.style.background = 'rgba(255, 165, 0, 0.15)';
+                        errorMsg.style.borderColor = 'rgba(255, 165, 0, 0.4)';
+                        errorMsg.style.color = '#ffb347';
+                    } else if (event.data.type === 'pwa-closed') {
+                        errorMsg.style.display = 'none';
+                    }
+                };
+            }
+
+            // Función para verificar si la PWA está viva
+            function isPwaAlive() {
+                if (IS_PWA) return false; // Si soy la PWA, no me bloqueo a mí misma
+                const lastHeartbeat = parseInt(localStorage.getItem('pwa-active') || '0');
+                return (Date.now() - lastHeartbeat) < 6000;
+            }
+
             // Inicializar Supabase
             const supabaseUrl = 'https://qhjrqfrsphctbdjubxpv.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoanJxZnJzcGhjdGJkanVieHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg5NzAsImV4cCI6MjA5MDgwNDk3MH0.fLF8SGXXE7BdbdzUHo7GiBM58BbZkUN89N8Cl1KnEHk';
@@ -214,9 +266,18 @@
                 e.preventDefault();
                 e.stopPropagation();
 
+                // BLOQUEO: No permitir login desde navegador si la PWA está activa
+                if (isPwaAlive()) {
+                    errorMsg.textContent = '📱 No podés iniciar sesión desde el navegador mientras la app PWA está abierta. Usá la aplicación instalada.';
+                    errorMsg.style.display = 'block';
+                    errorMsg.style.background = 'rgba(255, 165, 0, 0.15)';
+                    errorMsg.style.borderColor = 'rgba(255, 165, 0, 0.4)';
+                    errorMsg.style.color = '#ffb347';
+                    return;
+                }
+
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
-                const errorMsg = document.getElementById('error-message');
 
                 try {
                     const { data: perfiles, error } = await sb
@@ -229,6 +290,9 @@
                         console.error('Supabase error:', error);
                         errorMsg.textContent = 'Error de conexión con la base de datos.';
                         errorMsg.style.display = 'block';
+                        errorMsg.style.background = 'rgba(255, 0, 0, 0.1)';
+                        errorMsg.style.borderColor = 'rgba(255, 0, 0, 0.2)';
+                        errorMsg.style.color = 'var(--color-danger)';
                         return;
                     }
 
@@ -264,6 +328,9 @@
                     } else {
                         errorMsg.textContent = 'Credenciales incorrectas.';
                         errorMsg.style.display = 'block';
+                        errorMsg.style.background = 'rgba(255, 0, 0, 0.1)';
+                        errorMsg.style.borderColor = 'rgba(255, 0, 0, 0.2)';
+                        errorMsg.style.color = 'var(--color-danger)';
                     }
                 } catch (err) {
                     console.error('Login error:', err);
@@ -277,3 +344,4 @@
     </script>
 </body>
 </html>
+

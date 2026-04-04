@@ -1,3 +1,43 @@
+// ==================== EXCLUSIVIDAD PWA vs NAVEGADOR ====================
+const IS_PWA = window.matchMedia('(display-mode: standalone)').matches 
+            || window.navigator.standalone === true;
+
+const pwaChannel = new BroadcastChannel('pwa-session');
+
+if (IS_PWA) {
+    // SOY LA PWA: Marco heartbeat y aviso a las pestañas del navegador
+    localStorage.setItem('pwa-active', Date.now().toString());
+    setInterval(() => {
+        localStorage.setItem('pwa-active', Date.now().toString());
+    }, 3000);
+
+    // Avisar a cualquier pestaña de Chrome abierta que se cierre
+    pwaChannel.postMessage({ type: 'pwa-takeover' });
+
+    // Cuando la PWA se cierra, limpiar el heartbeat
+    window.addEventListener('beforeunload', () => {
+        localStorage.removeItem('pwa-active');
+        pwaChannel.postMessage({ type: 'pwa-closed' });
+    });
+} else {
+    // SOY NAVEGADOR: Verificar si la PWA ya está activa
+    const lastHeartbeat = parseInt(localStorage.getItem('pwa-active') || '0');
+    const pwaIsAlive = (Date.now() - lastHeartbeat) < 6000; // heartbeat reciente = PWA viva
+
+    if (pwaIsAlive) {
+        // La PWA está abierta, redirigir al login (NO borrar tokens, los comparte la PWA)
+        window.location.href = 'login.html?reason=pwa-active';
+    }
+
+    // Escuchar si la PWA se abre mientras el navegador está usando la app
+    pwaChannel.onmessage = (event) => {
+        if (event.data.type === 'pwa-takeover') {
+            // NO borrar tokens (los comparte la PWA en el mismo localStorage)
+            window.location.href = 'login.html?reason=pwa-active';
+        }
+    };
+}
+
 // ==================== CONEXIÓN SUPABASE ====================
 // Protección de ruta
 const token = localStorage.getItem('sb-token');
@@ -654,17 +694,110 @@ if ('Notification' in window && Notification.permission === 'default') {
 
 // ==================== HISTORIAL DE EVENTOS ====================
 const HistoryManager = {
-    panel: document.getElementById('history-panel'),
-    list: document.getElementById('history-list'),
-    toggleBtn: document.getElementById('toggle-history-btn'),
-    closeBtn: document.getElementById('close-history-btn'),
+    panel: null,
+    list: null,
+    toggleBtn: null,
+    closeBtn: null,
+    exportBtn: null,
+    exportModal: null,
 
     init() {
-        this.toggleBtn.addEventListener('click', () => this.togglePanel());
-        this.closeBtn.addEventListener('click', () => this.togglePanel());
+        this.panel = document.getElementById('history-panel');
+        this.list = document.getElementById('history-list');
+        this.toggleBtn = document.getElementById('toggle-history-btn');
+        this.closeBtn = document.getElementById('close-history-btn');
+        this.exportBtn = document.getElementById('open-export-btn');
+        this.exportModal = document.getElementById('export-modal');
+
+        if (this.toggleBtn) this.toggleBtn.addEventListener('click', () => this.togglePanel());
+        if (this.closeBtn) this.closeBtn.addEventListener('click', () => this.togglePanel());
+        if (this.exportBtn) this.exportBtn.onclick = () => this.openExport();
+
+        // Cerrar modales de exportación
+        const closeExp = document.getElementById('close-export-btn');
+        const cancelExp = document.getElementById('cancel-export-btn');
+        if (closeExp) closeExp.onclick = () => this.closeExport();
+        if (cancelExp) cancelExp.onclick = () => this.closeExport();
+
+        // Botón confirmar exportación
+        const confirmBtn = document.getElementById('confirm-export-btn');
+        if (confirmBtn) confirmBtn.onclick = () => this.handleExportAction();
     },
     togglePanel() {
-        this.panel.classList.toggle('hidden');
+        if (!this.panel) return;
+        this.panel.classList.toggle('visible');
+    },
+    openExport() {
+        if (this.exportModal) {
+            // Establecer fechas por defecto
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            document.getElementById('export-date-start').value = todayStr;
+            document.getElementById('export-date-end').value = todayStr;
+            this.exportModal.classList.remove('hidden');
+        }
+    },
+    closeExport() {
+        if (this.exportModal) this.exportModal.classList.add('hidden');
+    },
+    async handleExportAction() {
+        const start = document.getElementById('export-date-start').value;
+        const end = document.getElementById('export-date-end').value;
+        const selectedEvents = Array.from(document.querySelectorAll('.chk-event:checked')).map(cb => cb.value);
+        const allChecked = document.getElementById('chk-all').checked;
+
+        let query = sb.from('historial').select('*').eq('laboratorio_id', labId);
+        
+        if (start) query = query.gte('timestamp', new Date(start).toISOString());
+        if (end) {
+            const endDate = new Date(end);
+            endDate.setHours(23, 59, 59, 999);
+            query = query.lte('timestamp', endDate.toISOString());
+        }
+
+        const { data, error } = await query.order('timestamp', { ascending: false });
+
+        if (error || !data) {
+            alert("Error al obtener datos para exportar");
+            return;
+        }
+
+        // Filtrar por tipo de evento si no es "Todos"
+        let filteredData = data;
+        if (!allChecked) {
+            filteredData = data.filter(ev => selectedEvents.includes(ev.action));
+        }
+
+        if (filteredData.length === 0) {
+            alert("No hay eventos en el rango seleccionado");
+            return;
+        }
+
+        this.downloadCSV(filteredData);
+        this.closeExport();
+    },
+    downloadCSV(data) {
+        const headers = ["Fecha", "Hora", "Acción", "Paciente", "Estudio"];
+        const rows = data.map(ev => {
+            const date = new Date(ev.timestamp);
+            return [
+                date.toLocaleDateString(),
+                date.toLocaleTimeString(),
+                ev.action,
+                ev.patientName,
+                ev.studyType
+            ];
+        });
+
+        let csvContent = headers.join(",") + "\n" + rows.map(r => r.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `historial_${labId}_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     },
     renderItem(event) {
         const li = document.createElement('li');
