@@ -210,12 +210,36 @@ document.addEventListener('DOMContentLoaded', () => {
         logoContainer.onclick = null;
     }
     
-    // (Omitimos subida de imagen logo por ahora ya que en Vercel necesitamos Supabase Storage)
-    // Se recomienda hacerlo vía Supabase Storage posteriormente. Dejaremos este manejador sin efecto funcional complejo.
     const logoUpload = document.getElementById('logo-upload');
     if (logoUpload) {
         logoUpload.addEventListener('change', async (e) => {
-            alert("En la versión Vercel, la subida de logos requiere configuración de Supabase Storage. Comunícate con soporte.");
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validar tamaño (opcional, p.ej. 1MB)
+            if (file.size > 1024 * 1024) {
+                alert("El archivo es demasiado grande. Por favor, selecciona una imagen de menos de 1MB.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const base64Data = event.target.result;
+                try {
+                    const { error } = await sb.from('laboratorios').update({ logo: base64Data }).eq('id', labId);
+                    if (!error) {
+                        localStorage.setItem('lab-logo', base64Data);
+                        initLabBranding();
+                        alert('Logo actualizado correctamente');
+                    } else {
+                        throw error;
+                    }
+                } catch (err) {
+                    console.error('Error al subir logo:', err);
+                    alert('Error al guardar el logo en la base de datos.');
+                }
+            };
+            reader.readAsDataURL(file);
         });
     }
 
