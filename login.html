@@ -173,9 +173,41 @@
         document.addEventListener('DOMContentLoaded', async () => {
             // ==================== DETECCIÓN PWA ACTIVA ====================
             const IS_PWA = window.matchMedia('(display-mode: standalone)').matches 
-                        || window.navigator.standalone === true;
+                        || window.navigator.standalone === true
+                        || new URLSearchParams(window.location.search).get('mode') === 'pwa';
 
-            const pwaChannel = new BroadcastChannel('pwa-session');
+            const errorMsg = document.getElementById('error-message');
+            const loginForm = document.getElementById('login-form');
+            const submitBtn = loginForm.querySelector('.btn-submit');
+
+            // Función para verificar si la PWA está viva
+            function isPwaAlive() {
+                if (IS_PWA) return false;
+                const lastHeartbeat = parseInt(localStorage.getItem('pwa-active') || '0');
+                return (Date.now() - lastHeartbeat) < 8000;
+            }
+
+            function showPwaWarning() {
+                errorMsg.textContent = '📱 La aplicación PWA está abierta. Usá la app instalada para evitar conflictos de sonido.';
+                errorMsg.style.display = 'block';
+                errorMsg.style.background = 'rgba(255, 165, 0, 0.15)';
+                errorMsg.style.borderColor = 'rgba(255, 165, 0, 0.4)';
+                errorMsg.style.color = '#ffb347';
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.style.opacity = '0.5';
+                    submitBtn.style.cursor = 'not-allowed';
+                }
+            }
+
+            function hidePwaWarning() {
+                errorMsg.style.display = 'none';
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.style.cursor = 'pointer';
+                }
+            }
 
             // Si soy PWA, establecer heartbeat
             if (IS_PWA) {
@@ -185,42 +217,45 @@
                 }, 3000);
                 window.addEventListener('beforeunload', () => {
                     localStorage.removeItem('pwa-active');
-                    pwaChannel.postMessage({ type: 'pwa-closed' });
+                });
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        localStorage.setItem('pwa-active', Date.now().toString());
+                    }
                 });
             }
 
-            // Si el navegador fue expulsado por la PWA, mostrar cartel
-            const urlParams = new URLSearchParams(window.location.search);
-            const errorMsg = document.getElementById('error-message');
-            
-            if (urlParams.get('reason') === 'pwa-active') {
-                errorMsg.textContent = '📱 La aplicación PWA está abierta. Usá la app instalada para evitar conflictos de sonido.';
-                errorMsg.style.display = 'block';
-                errorMsg.style.background = 'rgba(255, 165, 0, 0.15)';
-                errorMsg.style.borderColor = 'rgba(255, 165, 0, 0.4)';
-                errorMsg.style.color = '#ffb347';
-            }
-
-            // Escuchar si la PWA se abre mientras estamos en login
+            // Si soy navegador, verificar y escuchar
             if (!IS_PWA) {
-                pwaChannel.onmessage = (event) => {
-                    if (event.data.type === 'pwa-takeover') {
-                        errorMsg.textContent = '📱 La aplicación PWA se acaba de abrir. Usá la app instalada.';
-                        errorMsg.style.display = 'block';
-                        errorMsg.style.background = 'rgba(255, 165, 0, 0.15)';
-                        errorMsg.style.borderColor = 'rgba(255, 165, 0, 0.4)';
-                        errorMsg.style.color = '#ffb347';
-                    } else if (event.data.type === 'pwa-closed') {
-                        errorMsg.style.display = 'none';
+                // Check inicial
+                if (isPwaAlive()) showPwaWarning();
+
+                // Escuchar cambios en localStorage (storage event se dispara en OTRAS ventanas)
+                window.addEventListener('storage', (e) => {
+                    if (e.key === 'pwa-active') {
+                        if (e.newValue) {
+                            showPwaWarning();
+                        } else {
+                            hidePwaWarning();
+                        }
                     }
-                };
+                });
+
+                // Fallback: verificación periódica
+                setInterval(() => {
+                    if (isPwaAlive()) {
+                        showPwaWarning();
+                    } else if (errorMsg.style.color === 'rgb(255, 179, 71)') {
+                        // Solo ocultar si el mensaje era el de PWA (no un error de login)
+                        hidePwaWarning();
+                    }
+                }, 5000);
             }
 
-            // Función para verificar si la PWA está viva
-            function isPwaAlive() {
-                if (IS_PWA) return false; // Si soy la PWA, no me bloqueo a mí misma
-                const lastHeartbeat = parseInt(localStorage.getItem('pwa-active') || '0');
-                return (Date.now() - lastHeartbeat) < 6000;
+            // Si vino redirigido con reason=pwa-active
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('reason') === 'pwa-active') {
+                showPwaWarning();
             }
 
             // Inicializar Supabase
@@ -261,7 +296,6 @@
             });
 
             // Lógica de login
-            const loginForm = document.getElementById('login-form');
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();

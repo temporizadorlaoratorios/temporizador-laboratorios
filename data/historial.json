@@ -486,5 +486,21 @@
     "patientName": "sadsa",
     "studyType": "PLR",
     "timestamp": "2026-04-01T10:30:27.177Z"
+  },
+  {
+    "id": "1775238343980",
+    "laboratorio_id": "lab-1",
+    "action": "CREADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-04-03T17:45:43.980Z"
+  },
+  {
+    "id": "1775238347936",
+    "laboratorio_id": "lab-1",
+    "action": "ELIMINADO",
+    "patientName": "edu",
+    "studyType": "PLR",
+    "timestamp": "2026-04-03T17:45:47.936Z"
   }
 ]

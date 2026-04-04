@@ -1,41 +1,105 @@
 // ==================== EXCLUSIVIDAD PWA vs NAVEGADOR ====================
 const IS_PWA = window.matchMedia('(display-mode: standalone)').matches 
-            || window.navigator.standalone === true;
+            || window.navigator.standalone === true
+            || new URLSearchParams(window.location.search).get('mode') === 'pwa';
 
-const pwaChannel = new BroadcastChannel('pwa-session');
+function showPwaBlockOverlay() {
+    // Si ya existe el overlay, no crear otro
+    if (document.getElementById('pwa-block-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'pwa-block-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,30,0.97);z-index:99999;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px;box-sizing:border-box;backdrop-filter:blur(10px);';
+    overlay.innerHTML = `
+        <div style="font-size:4rem;margin-bottom:20px;">📱</div>
+        <h2 style="color:#ffb347;font-family:Inter,sans-serif;font-size:1.5rem;margin-bottom:15px;">La aplicación PWA está abierta</h2>
+        <p style="color:#ccc;font-family:Inter,sans-serif;font-size:1rem;max-width:400px;line-height:1.6;">
+            Para evitar conflictos de sonido y que Chrome duerma esta pestaña, 
+            usá la <strong style="color:#ffb347;">app instalada</strong> (PWA).
+        </p>
+        <p style="color:#888;font-family:Inter,sans-serif;font-size:0.85rem;margin-top:20px;">
+            Esta pestaña se desbloqueará automáticamente si cerrás la PWA.
+        </p>
+    `;
+    document.body.appendChild(overlay);
+    // Silenciar todas las alarmas activas en esta pestaña
+    Object.keys(AppState?.activeAlarms || {}).forEach(id => stopAlarm?.(id));
+}
+
+function removePwaBlockOverlay() {
+    const overlay = document.getElementById('pwa-block-overlay');
+    if (overlay) overlay.remove();
+}
+
+function isPwaAlive() {
+    if (IS_PWA) return false; // La PWA no se bloquea a sí misma
+    const lastHeartbeat = parseInt(localStorage.getItem('pwa-active') || '0');
+    return (Date.now() - lastHeartbeat) < 8000; // 8s de margen (heartbeat cada 3s)
+}
+
+// Agregamos un log visual para debugging (dura 4 segundos)
+const debugDiv = document.createElement('div');
+debugDiv.style.cssText = 'position:fixed;bottom:10px;left:10px;background:rgba(0,0,0,0.85);color:#ffb347;padding:8px 15px;border-radius:8px;font-size:13px;z-index:99999;pointer-events:none;font-family:Inter,sans-serif;box-shadow:0 5px 15px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);';
+debugDiv.textContent = IS_PWA ? '✅ IDENTIFICADO COMO PWA' : '🌐 IDENTIFICADO COMO NAVEGADOR';
+document.body.appendChild(debugDiv);
+setTimeout(() => debugDiv.remove(), 4000);
 
 if (IS_PWA) {
-    // SOY LA PWA: Marco heartbeat y aviso a las pestañas del navegador
+    // ===== SOY LA PWA =====
+    // Marco heartbeat inmediato para que Chrome lo detecte
     localStorage.setItem('pwa-active', Date.now().toString());
+    
+    // Heartbeat cada 3 segundos
     setInterval(() => {
         localStorage.setItem('pwa-active', Date.now().toString());
     }, 3000);
 
-    // Avisar a cualquier pestaña de Chrome abierta que se cierre
-    pwaChannel.postMessage({ type: 'pwa-takeover' });
-
-    // Cuando la PWA se cierra, limpiar el heartbeat
+    // Cuando la PWA se cierra, limpiar heartbeat
     window.addEventListener('beforeunload', () => {
         localStorage.removeItem('pwa-active');
-        pwaChannel.postMessage({ type: 'pwa-closed' });
     });
-} else {
-    // SOY NAVEGADOR: Verificar si la PWA ya está activa
-    const lastHeartbeat = parseInt(localStorage.getItem('pwa-active') || '0');
-    const pwaIsAlive = (Date.now() - lastHeartbeat) < 6000; // heartbeat reciente = PWA viva
+    
+    // También limpiar con visibilitychange (por si beforeunload no se dispara en PWA)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            // Volvió al foco: refrescar heartbeat
+            localStorage.setItem('pwa-active', Date.now().toString());
+        }
+    });
 
-    if (pwaIsAlive) {
-        // La PWA está abierta, redirigir al login (NO borrar tokens, los comparte la PWA)
-        window.location.href = 'login.html?reason=pwa-active';
+} else {
+    // ===== SOY NAVEGADOR (Chrome pestaña) =====
+    
+    // Check inicial: ¿la PWA ya está corriendo?
+    if (isPwaAlive()) {
+        // Esperar a que el DOM cargue para mostrar overlay
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', showPwaBlockOverlay);
+        } else {
+            showPwaBlockOverlay();
+        }
     }
 
-    // Escuchar si la PWA se abre mientras el navegador está usando la app
-    pwaChannel.onmessage = (event) => {
-        if (event.data.type === 'pwa-takeover') {
-            // NO borrar tokens (los comparte la PWA en el mismo localStorage)
-            window.location.href = 'login.html?reason=pwa-active';
+    // Escuchar cambios en localStorage (se dispara cuando OTRA ventana/PWA escribe)
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'pwa-active') {
+            if (e.newValue) {
+                // La PWA acaba de escribir heartbeat → bloquear esta pestaña
+                showPwaBlockOverlay();
+            } else {
+                // La PWA limpió el heartbeat (se cerró) → desbloquear
+                removePwaBlockOverlay();
+            }
         }
-    };
+    });
+
+    // Verificación periódica por si el storage event no se dispara (fallback)
+    setInterval(() => {
+        if (isPwaAlive()) {
+            showPwaBlockOverlay();
+        } else {
+            removePwaBlockOverlay();
+        }
+    }, 5000);
 }
 
 // ==================== CONEXIÓN SUPABASE ====================
@@ -44,7 +108,8 @@ const token = localStorage.getItem('sb-token');
 const labId = localStorage.getItem('lab-id');
 
 if (!token || !labId) {
-    window.location.href = 'login.html';
+    const pwaParam = IS_PWA ? '?mode=pwa' : '';
+    window.location.href = 'login.html' + pwaParam;
 }
 
 const supabaseUrl = 'https://qhjrqfrsphctbdjubxpv.supabase.co';
@@ -828,7 +893,8 @@ HistoryManager.init();
 function logout() {
     if (confirm('¿Cerrar sesión?')) {
         localStorage.clear();
-        window.location.href = 'login.html';
+        const pwaParam = IS_PWA ? '?mode=pwa' : '';
+        window.location.href = 'login.html' + pwaParam;
     }
 }
 window.logout = logout;

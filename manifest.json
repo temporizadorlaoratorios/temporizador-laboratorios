@@ -2,7 +2,7 @@
     "name": "Temporizador Sincronizado",
     "short_name": "Temporalizador",
     "description": "Sistema de temporizadores para laboratorio",
-    "start_url": "/",
+    "start_url": "/index.html?mode=pwa",
     "display": "standalone",
     "background_color": "#1a1a2e",
     "theme_color": "#1a1a2e",

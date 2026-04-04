@@ -89,6 +89,10 @@ header {
     box-shadow: 0 0 15px rgba(194, 0, 120, 0.4);
 }
 
+.hidden {
+    display: none !important;
+}
+
 .logo-placeholder {
     padding: 20px;
     color: var(--color-text-muted);
