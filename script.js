@@ -467,7 +467,14 @@ async function loadInitialData() {
                 const prevVisual = AppState.timers[idx].visualRemaining;
 
                 AppState.timers[idx] = payload.new;
-                AppState.timers[idx].visualRemaining = prevVisual; // Mantener progreso visual local
+                
+                // Si el temporizador se ha reiniciado (no está corriendo ni pausado ni completado)
+                // o si la diferencia es muy grande, actualizamos visualRemaining
+                if (!payload.new.isRunning && !payload.new.isPaused && !payload.new.isCompleted) {
+                    AppState.timers[idx].visualRemaining = payload.new.remainingSeconds;
+                } else {
+                    AppState.timers[idx].visualRemaining = prevVisual; // Mantener progreso visual local para fluidez
+                }
                 
                 if (payload.new.isCompleted && !payload.new.isAcknowledged) {
                     // Si está completado y NO ha sido silenciado aún
@@ -746,6 +753,7 @@ window.toggleTimer = async (id) => {
         const targetTime = new Date(nowReal + (timer.remainingSeconds * 1000)).toISOString();
         timer.isRunning = true;
         timer.isPaused = false;
+        timer.visualRemaining = timer.remainingSeconds; // Sincronizar visual con el tiempo real al iniciar
         timer.targetTime = targetTime;
         updateTimerDisplay(id);
         await sb.from('timers').update({
@@ -763,6 +771,7 @@ window.resetTimer = async (id) => {
     stopAlarm(id);
     // Actualizar UI localmente primero
     timer.remainingSeconds = timer.totalSeconds;
+    timer.visualRemaining = timer.totalSeconds;
     timer.isRunning = false;
     timer.isPaused = false;
     timer.isCompleted = false;
