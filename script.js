@@ -405,8 +405,11 @@ async function loadInitialData() {
         filter: `laboratorio_id=eq.${labId}` 
     }, payload => {
         if (payload.eventType === 'INSERT') {
-            AppState.timers.push(payload.new);
-            renderTimers();
+            // Solo agregar si no existe ya localmente
+            if (!AppState.timers.find(t => t.id === payload.new.id)) {
+                AppState.timers.push(payload.new);
+                renderTimers();
+            }
         } else if (payload.eventType === 'UPDATE') {
             const idx = AppState.timers.findIndex(t => t.id === payload.new.id);
             if (idx !== -1) {
@@ -416,6 +419,9 @@ async function loadInitialData() {
                 if (payload.new.isCompleted && wasNotCompleted) {
                     startContinuousAlarm(payload.new.id);
                     showNotification(payload.new);
+                } else if (!payload.new.isCompleted) {
+                    // Si ya no está completado (se reinició o pausó), apagar alarma local
+                    stopAlarm(payload.new.id);
                 }
                 updateTimerDisplay(payload.new.id);
             }
@@ -433,7 +439,13 @@ async function loadInitialData() {
     }, payload => {
         HistoryManager.addEvent(payload.new);
     })
-    .subscribe();
+    .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            console.log('✅ Realtime conectado con éxito al lab:', labId);
+        } else {
+            console.error('⚠️ Realtime con problemas de conexión:', status);
+        }
+    });
 }
 
 async function logHistoryLocally(action, timer) {
@@ -645,7 +657,20 @@ window.deleteTimer = async (id) => {
     }
 };
 
-window.handleStopAlarm = (id) => stopAlarm(id);
+window.handleStopAlarm = async (id) => {
+    stopAlarm(id);
+    // Para que se detenga el sonido en todas las PC al mismo tiempo,
+    // actualizamos la DB poniendo isCompleted en false.
+    try {
+        await sb.from('timers').update({ 
+            isCompleted: false,
+            isRunning: false,
+            isPaused: true 
+        }).eq('id', id);
+    } catch (e) {
+        console.error('Error al silenciar alarma globalmente:', e);
+    }
+};
 
 // ==================== FORMULARIO ====================
 function formatInputValue(input) {
@@ -751,8 +776,7 @@ elements.form.addEventListener('submit', async (e) => {
     if (patientName && studyType && totalSeconds > 0) {
         const targetTimeIso = new Date(Date.now() + (totalSeconds * 1000)).toISOString();
         const newTimerId = Date.now().toString();
-        
-        await sb.from('timers').insert({
+        const newTimerData = {
             id: newTimerId,
             laboratorio_id: labId,
             patientName,
@@ -763,7 +787,13 @@ elements.form.addEventListener('submit', async (e) => {
             isRunning: true,
             isPaused: false,
             isCompleted: false
-        });
+        };
+
+        // Actualizar localmente al instante para el creador
+        AppState.timers.push(newTimerData);
+        renderTimers();
+
+        await sb.from('timers').insert(newTimerData);
 
         // Insert log
         logHistoryLocally('CREADO', { laboratorio_id: labId, patientName, studyType });
