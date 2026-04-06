@@ -244,13 +244,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadInitialData();
+    syncTimeWithServer(); // Sincronizar reloj oficial
 });
 
 // ==================== ESTADO GLOBAL LOCAL ====================
 const AppState = {
     timers: [],
-    activeAlarms: {}
+    activeAlarms: {},
+    serverTimeOffset: 0 // Diferencia entre servidor y PC local
 };
+
+async function syncTimeWithServer() {
+    try {
+        const start = Date.now();
+        const response = await fetch(supabaseUrl + '/rest/v1/?select=id', {
+            headers: { 'apikey': supabaseKey }
+        });
+        const end = Date.now();
+        const latency = (end - start) / 2;
+        const serverDateStr = response.headers.get('date');
+        
+        if (serverDateStr) {
+            const serverTime = new Date(serverDateStr).getTime() + latency;
+            AppState.serverTimeOffset = serverTime - Date.now();
+            console.log('🕒 Sincronización de reloj OK. Desfase:', AppState.serverTimeOffset, 'ms');
+        }
+    } catch (e) {
+        console.warn('No se pudo sincronizar el reloj con el servidor', e);
+    }
+}
 
 const elements = {
     form: document.getElementById('timer-form'),
@@ -463,10 +485,10 @@ async function logHistoryLocally(action, timer) {
 // MOTOR DEL RELOJ LOCAL
 setInterval(async () => {
     let requiresRender = false;
+    const now = Date.now() + AppState.serverTimeOffset; // Usar hora sincronizada
     AppState.timers.forEach(t => {
         if (t.isRunning && !t.isPaused && !t.isCompleted && t.targetTime) {
             const target = new Date(t.targetTime).getTime();
-            const now = Date.now();
             const diff = Math.floor((target - now) / 1000);
             
             t.remainingSeconds = Math.max(0, diff);
@@ -610,7 +632,8 @@ window.toggleTimer = async (id) => {
         logHistoryLocally('PAUSADO', timer);
     } else {
         // Iniciar - actualizar UI localmente primero
-        const targetTime = new Date(Date.now() + (timer.remainingSeconds * 1000)).toISOString();
+        const nowReal = Date.now() + AppState.serverTimeOffset;
+        const targetTime = new Date(nowReal + (timer.remainingSeconds * 1000)).toISOString();
         timer.isRunning = true;
         timer.isPaused = false;
         timer.targetTime = targetTime;
@@ -774,7 +797,8 @@ elements.form.addEventListener('submit', async (e) => {
     }
 
     if (patientName && studyType && totalSeconds > 0) {
-        const targetTimeIso = new Date(Date.now() + (totalSeconds * 1000)).toISOString();
+        const nowReal = Date.now() + AppState.serverTimeOffset;
+        const targetTimeIso = new Date(nowReal + (totalSeconds * 1000)).toISOString();
         const newTimerId = Date.now().toString();
         const newTimerData = {
             id: newTimerId,
