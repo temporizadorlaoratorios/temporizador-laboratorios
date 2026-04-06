@@ -402,7 +402,10 @@ async function loadInitialData() {
         console.error('Error cargando timers:', error);
     }
 
-    AppState.timers = timersData || [];
+    AppState.timers = (timersData || []).map(t => ({
+        ...t,
+        visualRemaining: t.remainingSeconds
+    }));
     renderTimers();
 
     // Cargar Historial
@@ -431,7 +434,10 @@ async function loadInitialData() {
         if (payload.eventType === 'INSERT') {
             // Solo agregar si no existe ya localmente
             if (!AppState.timers.find(t => t.id === payload.new.id)) {
-                AppState.timers.push(payload.new);
+                const timer = payload.new;
+                // Inicializar tiempo visual con el nominal (como pidió el usuario: "pónle 2 o 3 segundos de más")
+                timer.visualRemaining = timer.totalSeconds;
+                AppState.timers.push(timer);
                 renderTimers();
             }
         } else if (payload.eventType === 'UPDATE') {
@@ -439,8 +445,10 @@ async function loadInitialData() {
             if (idx !== -1) {
                 const wasNotCompleted = !AppState.timers[idx].isCompleted;
                 const wasAcknowledged = AppState.timers[idx].isAcknowledged;
-                
+                const prevVisual = AppState.timers[idx].visualRemaining;
+
                 AppState.timers[idx] = payload.new;
+                AppState.timers[idx].visualRemaining = prevVisual; // Mantener progreso visual local
                 
                 if (payload.new.isCompleted && !payload.new.isAcknowledged) {
                     // Si está completado y NO ha sido silenciado aún
@@ -541,26 +549,51 @@ async function logHistoryLocally(action, timer) {
     await sb.from('historial').insert(historyEvent);
 }
 
-// MOTOR DEL RELOJ LOCAL (Corrección de Sincronización)
+// MOTOR DEL RELOJ LOCAL (Corrección de Sincronización + TIME WARPING)
 setInterval(async () => {
-    const now = Date.now() + AppState.serverTimeOffset; // Usar hora sincronizada
+    const now = Date.now() + AppState.serverTimeOffset;
     AppState.timers.forEach(t => {
         if (t.isRunning && !t.isPaused && !t.isCompleted && t.targetTime) {
             const target = new Date(t.targetTime).getTime();
-            const diff = Math.floor((target - now) / 1000);
+            const theoreticalRemaining = Math.max(0, (target - now) / 1000);
             
-            t.remainingSeconds = Math.max(0, diff);
+            // Inicializar visualRemaining si no existe
+            if (t.visualRemaining === undefined) {
+                t.visualRemaining = theoreticalRemaining;
+            }
 
-            if (t.remainingSeconds <= 0 && !t.isCompleted) {
+            // --- LÓGICA DE DISTORSIÓN (WARPING) ---
+            // Queremos que t.visualRemaining llegue a 0 al mismo tiempo que theoreticalRemaining
+            const gap = t.visualRemaining - theoreticalRemaining;
+            
+            let step = 0.1; // Paso normal (100ms)
+
+            if (theoreticalRemaining > 0) {
+                // Si el desfase es significativo, ajustamos la velocidad del segundero
+                // warpFactor: cuántos segundos visuales perdemos por cada segundo real
+                const warpFactor = t.visualRemaining / theoreticalRemaining;
+                
+                // Limitamos la distorsión para que no sea visualmente agresiva (máximo +- 20%)
+                const clampedWarp = Math.max(0.5, Math.min(2.0, warpFactor));
+                step = 0.1 * clampedWarp;
+            } else {
+                // Si ya llegamos al tiempo real, el visual debe colapsar a 0 rápido
+                step = t.visualRemaining; 
+            }
+
+            t.visualRemaining = Math.max(0, t.visualRemaining - step);
+            t.remainingSeconds = Math.round(t.visualRemaining);
+
+            // Solo disparar completado cuando AMBOS (visual y real) lleguen a 0
+            if (theoreticalRemaining <= 0 && t.visualRemaining <= 0 && !t.isCompleted) {
                 t.remainingSeconds = 0;
+                t.visualRemaining = 0;
                 t.isRunning = false;
                 t.isCompleted = true;
                 
-                // Disparar alarma y notificación localmente
                 startContinuousAlarm(t.id);
                 showNotification(t);
                 
-                // Un cliente sube el cambio para evitar saturación
                 sb.from('timers').update({ 
                     remainingSeconds: 0, 
                     isRunning: false, 
@@ -572,7 +605,7 @@ setInterval(async () => {
             updateTimerDisplay(t.id);
         }
     });
-}, 1000);
+}, 100);
 
 // ==================== RENDERIZADO UI ====================
 function renderTimers() {
