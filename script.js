@@ -128,15 +128,16 @@ function initLabBranding() {
         appTitle.textContent = labNombre.toUpperCase();
     }
 
-    if (labId === 'super-admin') {
+    if (labLogo) {
         if (logoImg) {
-            logoImg.src = 'logo.png';
+            logoImg.src = labLogo;
             logoImg.style.display = 'block';
         }
         if (logoPlaceholder) logoPlaceholder.style.display = 'none';
-    } else if (labLogo) {
+    } else if (labId === 'super-admin') {
+        // Fallback para super-admin si no hay logo personalizado aún
         if (logoImg) {
-            logoImg.src = labLogo;
+            logoImg.src = 'logo.png';
             logoImg.style.display = 'block';
         }
         if (logoPlaceholder) logoPlaceholder.style.display = 'none';
@@ -152,7 +153,6 @@ function handleLogoClick(event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    if (labId === 'super-admin') return;
 
     const logoImg = document.getElementById('app-logo');
     const logoMenu = document.getElementById('logo-options-menu');
@@ -204,11 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initLabBranding();
     
     const logoContainer = document.getElementById('logo-container');
-    if (labId === 'super-admin' && logoContainer) {
-        logoContainer.classList.remove('interactive-logo');
-        logoContainer.style.cursor = 'default';
-        logoContainer.onclick = null;
-    }
     
     const logoUpload = document.getElementById('logo-upload');
     if (logoUpload) {
@@ -249,7 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== ESTADO GLOBAL LOCAL ====================
 const AppState = {
     timers: [],
-    activeAlarms: {}
+    presets: [],
+    activeAlarms: {},
+    timeOffset: 0 // Diferencia entre reloj local y servidor
 };
 
 const elements = {
@@ -365,6 +362,29 @@ function showNotification(timer) {
     }
 }
 
+async function syncWithServerTime() {
+    try {
+        const start = Date.now();
+        const response = await fetch('/api/time');
+        const end = Date.now();
+        const { serverTime } = await response.json();
+        
+        // Latencia estimada (ida y vuelta / 2)
+        const latency = (end - start) / 2;
+        // El offset es la diferencia entre el tiempo del servidor y el tiempo local (ajustado por latencia)
+        AppState.timeOffset = serverTime - (end - latency);
+        
+        console.log(`[Sincro] Servidor: ${new Date(serverTime).toLocaleTimeString()}, Local: ${new Date().toLocaleTimeString()}, Offset: ${AppState.timeOffset}ms`);
+    } catch (e) {
+        console.warn('No se pudo sincronizar el reloj con el servidor local. Usando hora del sistema.', e);
+        AppState.timeOffset = 0;
+    }
+}
+
+// Sincronizar al inicio y cada 5 minutos
+syncWithServerTime();
+setInterval(syncWithServerTime, 5 * 60 * 1000);
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -395,15 +415,20 @@ async function loadInitialData() {
         .limit(50);
     if (historyData) HistoryManager.loadList(historyData);
 
+    // Cargar Presets (Ajustes de Tiempo)
+    await loadPresets();
+
     // Suscribirse a cambios en DB REALTIME (Reemplazo Socket.io)
-    // Cada lab suscripto únicamente a sus propios cambios para aislamiento total
-    sb.channel('timers_channel')
+    const channel = sb.channel('db_changes');
+    
+    channel
     .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'timers', 
         filter: `laboratorio_id=eq.${labId}` 
     }, payload => {
+        console.log('Cambio en Timer detectado:', payload);
         if (payload.eventType === 'INSERT') {
             AppState.timers.push(payload.new);
             renderTimers();
@@ -431,9 +456,61 @@ async function loadInitialData() {
         table: 'historial', 
         filter: `laboratorio_id=eq.${labId}` 
     }, payload => {
+        console.log('Nuevo historial detectado:', payload);
         HistoryManager.addEvent(payload.new);
     })
-    .subscribe();
+    .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'ajustes_tiempo', 
+        filter: `laboratorio_id=eq.${labId}` 
+    }, payload => {
+        console.log('Cambio en Ajuste detectado:', payload);
+        loadPresets(); // Recargar presets cuando cambien
+    })
+    .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'laboratorios', 
+        filter: `id=eq.${labId}` 
+    }, payload => {
+        console.log('Cambio en Branding detectado:', payload);
+        if (payload.new.logo) {
+            localStorage.setItem('lab-logo', payload.new.logo);
+            initLabBranding();
+        }
+    })
+    .subscribe((status) => {
+        console.log('Estado del canal Realtime:', status);
+    });
+}
+
+async function loadPresets() {
+    const { data: presetsData, error } = await sb
+        .from('ajustes_tiempo')
+        .select('*')
+        .eq('laboratorio_id', labId)
+        .order('sigla', { ascending: true });
+    
+    if (!error) {
+        AppState.presets = presetsData || [];
+        updatePresetsDatalist();
+        if (document.getElementById('modal-presets').style.display === 'flex') {
+            renderPresetsList();
+        }
+    }
+}
+
+function updatePresetsDatalist() {
+    const datalist = document.getElementById('study-suggestions');
+    if (!datalist) return;
+    datalist.innerHTML = '';
+    AppState.presets.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.sigla;
+        opt.textContent = p.descripcion || '';
+        datalist.appendChild(opt);
+    });
 }
 
 async function logHistoryLocally(action, timer) {
@@ -448,13 +525,14 @@ async function logHistoryLocally(action, timer) {
     await sb.from('historial').insert(historyEvent);
 }
 
-// MOTOR DEL RELOJ LOCAL
+// MOTOR DEL RELOJ LOCAL (Corrección de Sincronización)
 setInterval(async () => {
     let requiresRender = false;
     AppState.timers.forEach(t => {
         if (t.isRunning && !t.isPaused && !t.isCompleted && t.targetTime) {
             const target = new Date(t.targetTime).getTime();
-            const now = Date.now();
+            // USAMOS LA HORA CORREGIDA
+            const now = Date.now() + AppState.timeOffset;
             const diff = Math.floor((target - now) / 1000);
             
             t.remainingSeconds = Math.max(0, diff);
@@ -598,7 +676,8 @@ window.toggleTimer = async (id) => {
         logHistoryLocally('PAUSADO', timer);
     } else {
         // Iniciar - actualizar UI localmente primero
-        const targetTime = new Date(Date.now() + (timer.remainingSeconds * 1000)).toISOString();
+        // USAMOS LA HORA CORREGIDA PARA CALCULAR EL TARGET
+        const targetTime = new Date(Date.now() + AppState.timeOffset + (timer.remainingSeconds * 1000)).toISOString();
         timer.isRunning = true;
         timer.isPaused = false;
         timer.targetTime = targetTime;
@@ -660,14 +739,6 @@ function formatInputValue(input) {
 });
 
 let currentMode = 'duration';
-const STUDY_PRESETS = {
-    'PLR': { mode: 'duration', hours: 0, minutes: 20 },
-    'CORTISOL': { mode: 'fixed', time: '08:00' },
-    'ACTH': { mode: 'fixed', time: '08:00' },
-    'CTM': { mode: 'fixed', time: '08:00' },
-    'CTGN': { mode: 'duration', hours: 2, minutes: 0 },
-    'H.PYLORI': { mode: 'duration', hours: 0, minutes: 20 }
-};
 
 window.clearForm = () => {
     elements.patientNameInput.value = '';
@@ -699,7 +770,7 @@ window.toggleTimerMode = () => {
         }
     } else {
         if (secondsWrapper) secondsWrapper.style.display = 'flex';
-        if (!elements.studyTypeInput.value || !STUDY_PRESETS[elements.studyTypeInput.value.toUpperCase()]) {
+        if (!elements.studyTypeInput.value || !AppState.presets.find(p => p.sigla.toUpperCase() === elements.studyTypeInput.value.toUpperCase())) {
             elements.hoursInput.value = '00';
             elements.minutesInput.value = '00';
         }
@@ -707,24 +778,23 @@ window.toggleTimerMode = () => {
 };
 
 elements.studyTypeInput.addEventListener('input', (e) => {
-    const val = e.target.value.toUpperCase();
-    const preset = STUDY_PRESETS[val];
+    const val = e.target.value.toUpperCase().trim();
+    // Buscar en presets por sigla o descripción
+    const preset = AppState.presets.find(p => 
+        p.sigla.toUpperCase() === val || 
+        (p.descripcion && p.descripcion.toUpperCase() === val)
+    );
+    
     if (preset) {
-        const modeRadio = document.querySelector(`input[name="timer-mode"][value="${preset.mode}"]`);
+        const modeRadio = document.querySelector(`input[name="timer-mode"][value="${preset.tipo}"]`);
         if (modeRadio && !modeRadio.checked) {
             modeRadio.checked = true;
             toggleTimerMode();
         }
-        if (preset.mode === 'duration') {
-            elements.hoursInput.value = String(preset.hours).padStart(2, '0');
-            elements.minutesInput.value = String(preset.minutes).padStart(2, '0');
-            elements.secondsInput.value = '00';
-        } else if (preset.mode === 'fixed') {
-            const [pHours, pMinutes] = preset.time.split(':').map(Number);
-            elements.hoursInput.value = String(pHours).padStart(2, '0');
-            elements.minutesInput.value = String(pMinutes).padStart(2, '0');
-            elements.secondsInput.value = '00';
-        }
+        
+        elements.hoursInput.value = String(preset.horas || 0).padStart(2, '0');
+        elements.minutesInput.value = String(preset.minutos || 0).padStart(2, '0');
+        elements.secondsInput.value = String(preset.segundos || 0).padStart(2, '0');
     }
 });
 
@@ -749,7 +819,8 @@ elements.form.addEventListener('submit', async (e) => {
     }
 
     if (patientName && studyType && totalSeconds > 0) {
-        const targetTimeIso = new Date(Date.now() + (totalSeconds * 1000)).toISOString();
+        // USAMOS LA HORA CORREGIDA PARA CALCULAR EL TARGET INICIAL
+        const targetTimeIso = new Date(Date.now() + AppState.timeOffset + (totalSeconds * 1000)).toISOString();
         const newTimerId = Date.now().toString();
         
         await sb.from('timers').insert({
@@ -961,3 +1032,90 @@ document.getElementById('change-password-form')?.addEventListener('submit', asyn
         alert("Contraseña actual incorrecta.");
     }
 });
+
+// ==================== GESTIÓN DE PRESETS (AJUSTES) ====================
+window.openPresetsModal = () => {
+    document.getElementById('options-dropdown').style.display = 'none';
+    document.getElementById('modal-presets').style.display = 'flex';
+    renderPresetsList();
+};
+
+window.closePresetsModal = () => {
+    document.getElementById('modal-presets').style.display = 'none';
+};
+
+function renderPresetsList() {
+    const list = document.getElementById('presets-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    AppState.presets.forEach(p => {
+        const tr = document.createElement('tr');
+        const timeStr = p.tipo === 'duration' 
+            ? `${String(p.horas).padStart(2, '0')}:${String(p.minutos).padStart(2, '0')}:${String(p.segundos).padStart(2, '0')}`
+            : `${String(p.horas).padStart(2, '0')}:${String(p.minutos).padStart(2, '0')} (Fija)`;
+        
+        tr.innerHTML = `
+            <td style="font-weight: bold; color: var(--color-primary);">${escapeHtml(p.sigla)}</td>
+            <td>${escapeHtml(p.descripcion || '')}</td>
+            <td style="font-size: 0.75rem;">${p.tipo === 'duration' ? 'Regresiva' : 'Fija'}</td>
+            <td style="font-family: var(--font-mono);">${timeStr}</td>
+            <td>
+                <button onclick="deletePreset('${p.id}')" style="background: transparent; border: none; color: var(--color-danger); cursor: pointer; padding: 5px;">
+                    🗑️
+                </button>
+            </td>
+        `;
+        list.appendChild(tr);
+    });
+}
+
+document.getElementById('preset-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sigla = document.getElementById('preset-sigla').value.toUpperCase().trim();
+    const descripcion = document.getElementById('preset-desc').value.trim();
+    const tipo = document.getElementById('preset-tipo').value;
+    const horas = parseInt(document.getElementById('preset-h').value) || 0;
+    const minutos = parseInt(document.getElementById('preset-m').value) || 0;
+    const segundos = parseInt(document.getElementById('preset-s').value) || 0;
+
+    const newPreset = {
+        laboratorio_id: labId,
+        sigla,
+        descripcion,
+        tipo,
+        horas,
+        minutos,
+        segundos
+    };
+
+    const { error } = await sb.from('ajustes_tiempo').insert(newPreset);
+    if (!error) {
+        document.getElementById('preset-form').reset();
+        await loadPresets();
+        alert('Ajuste guardado correctamente');
+    } else {
+        console.error('Error Supabase:', error);
+        if (error.code === '42P01') {
+            alert('Error: La tabla "ajustes_tiempo" no existe en Supabase. Por favor, ejecuta el código SQL proporcionado anteriormente.');
+        } else {
+            alert('Error al guardar el ajuste: ' + (error.message || 'Error desconocido'));
+        }
+    }
+});
+
+window.deletePreset = async (id) => {
+    if (!confirm('¿Eliminar este ajuste?')) return;
+    const { error } = await sb.from('ajustes_tiempo').delete().eq('id', id);
+    if (!error) {
+        await loadPresets();
+    } else {
+        alert('Error al eliminar');
+    }
+};
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

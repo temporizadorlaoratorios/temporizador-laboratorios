@@ -74,6 +74,11 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// === API DE TIEMPO (Sincronización) ===
+app.get('/api/time', (req, res) => {
+    res.json({ serverTime: Date.now() });
+});
+
 // === API DE LOGOS ===
 app.post('/api/upload-logo', async (req, res) => {
     try {

@@ -136,6 +136,69 @@
             margin-top: 0;
             color: var(--color-primary);
         }
+
+        /* Estilos para el logo interactivo (consistente con index.html/style.css) */
+        .logo-container.interactive-logo {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .logo-container.interactive-logo:hover {
+            transform: scale(1.02);
+        }
+        .logo-placeholder {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 10px;
+            transition: all 0.2s;
+        }
+        .logo-placeholder:hover {
+            border-color: var(--color-primary);
+            background: rgba(194, 0, 120, 0.05);
+            color: var(--color-primary);
+        }
+        .logo-edit-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .logo-container.interactive-logo:hover .logo-edit-overlay { opacity: 1; }
+        .logo-edit-overlay span {
+            color: white; font-weight: 600; font-size: 0.9rem;
+            padding: 4px 10px; background: var(--gradient-primary);
+            border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .logo-options-menu {
+            position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            margin-top: 10px; background: var(--color-bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-md);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); padding: 8px; z-index: 100;
+            display: none; flex-direction: column; gap: 4px; min-width: 150px;
+        }
+        .logo-menu-btn {
+            background: transparent; border: none; color: var(--color-text-primary);
+            padding: 8px 12px; text-align: left; border-radius: var(--radius-sm);
+            cursor: pointer; font-size: 0.9rem; transition: background 0.2s;
+        }
+        .logo-menu-btn:hover { background: rgba(255, 255, 255, 0.1); }
+        .logo-menu-btn.delete-btn { color: var(--color-danger); }
+        .logo-menu-btn.delete-btn:hover { background: rgba(255, 100, 100, 0.1); }
+        .logo-menu-btn.cancel-btn {
+            color: var(--color-text-muted); border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 4px; padding-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -143,9 +206,21 @@
     <div class="background-gradient"></div>
     <div class="container">
         <header>
-            <div class="logo-container">
-                <img src="logo.png" alt="Laboratorios" class="app-logo">
+            <div class="logo-container interactive-logo" id="logo-container" onclick="handleLogoClick(event)">
+                <img src="logo.png" alt="Laboratorios" class="app-logo" id="app-logo" style="display: none;">
+                <div id="logo-placeholder" class="logo-placeholder" style="display: none;">
+                    <span>📷 Cargar Logo</span>
+                </div>
+                <div id="logo-edit-overlay" class="logo-edit-overlay">
+                    <span>✏️ Editar</span>
+                </div>
+                <div id="logo-options-menu" class="logo-options-menu" onclick="event.stopPropagation()">
+                    <button onclick="document.getElementById('logo-upload').click(); closeLogoMenu();" class="logo-menu-btn">Cambiar Logo</button>
+                    <button onclick="deleteLogo(); closeLogoMenu();" class="logo-menu-btn delete-btn">Eliminar Logo</button>
+                    <button onclick="closeLogoMenu()" class="logo-menu-btn cancel-btn">Cancelar</button>
+                </div>
             </div>
+            <input type="file" id="logo-upload" accept="image/*" style="display: none;">
             <h1 class="app-title-text" style="font-size: 2.2rem;">Panel de Control Global</h1>
             <div class="admin-actions">
                 <button onclick="window.open('index.html', '_blank')" class="history-btn-blue"> Abrir Temporizador </button>
@@ -381,7 +456,17 @@
                 tr.innerHTML = `
                     <td>${lab.nombre}</td>
                     <td style="font-family: var(--font-mono); font-size: 0.9rem;">${lab.email}</td>
-                    <td style="font-family: var(--font-mono); font-size: 0.9rem;">${lab.password}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.9rem;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="password-text" data-real-password="${lab.password}" data-hidden="true">••••••••</span>
+                            <button type="button" class="toggle-password" style="position: static; transform: none; width: 20px; height: 20px;" onclick="toggleTablePassword(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
                     <td><span class="badge ${lab.activo ? 'badge-online' : 'badge-offline'}">${lab.activo ? 'ACTIVO' : 'INACTIVO'}</span></td>
                     <td>${lab.max_pcs}</td>
                     <td>
@@ -458,6 +543,104 @@
             else { inp.type = 'password'; btnEl.innerHTML = eyeSvg; }
         }
 
+        function toggleTablePassword(btn) {
+            const container = btn.closest('div');
+            const span = container.querySelector('.password-text');
+            const isHidden = span.dataset.hidden === 'true';
+            
+            if (isHidden) {
+                span.textContent = span.dataset.realPassword;
+                span.dataset.hidden = 'false';
+                btn.innerHTML = eyeSlashSvg;
+            } else {
+                span.textContent = '••••••••';
+                span.dataset.hidden = 'true';
+                btn.innerHTML = eyeSvg;
+            }
+        }
+
+        // ==================== GESTIÓN DE LOGO INTERACTIVO ====================
+        const labId = 'super-admin';
+
+        async function initLabBranding() {
+            // Obtener logo desde Supabase para el super-admin
+            const { data: labData } = await sb.from('laboratorios').select('logo').eq('id', labId).single();
+            const logoImg = document.getElementById('app-logo');
+            const logoPlaceholder = document.getElementById('logo-placeholder');
+            
+            if (labData && labData.logo) {
+                logoImg.src = labData.logo;
+                logoImg.style.display = 'block';
+                logoPlaceholder.style.display = 'none';
+                localStorage.setItem('lab-logo', labData.logo);
+            } else {
+                logoImg.style.display = 'none';
+                logoPlaceholder.style.display = 'flex';
+                localStorage.removeItem('lab-logo');
+            }
+        }
+
+        function handleLogoClick(event) {
+            event.stopPropagation();
+            const logoMenu = document.getElementById('logo-options-menu');
+            const logoImg = document.getElementById('app-logo');
+            
+            if (logoImg.style.display === 'none') {
+                document.getElementById('logo-upload').click();
+            } else {
+                logoMenu.style.display = (logoMenu.style.display === 'flex') ? 'none' : 'flex';
+            }
+        }
+
+        function closeLogoMenu() {
+            document.getElementById('logo-options-menu').style.display = 'none';
+        }
+
+        async function deleteLogo() {
+            if (!confirm('¿Seguro que deseas eliminar el logo del panel global?')) return;
+            try {
+                await sb.from('laboratorios').update({ logo: null }).eq('id', labId);
+                initLabBranding();
+                alert('Logo eliminado correctamente');
+            } catch (err) {
+                alert('Error al eliminar logo');
+            }
+        }
+
+        document.getElementById('logo-upload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 1024 * 1024) {
+                alert("La imagen es demasiado grande (máx 1MB)");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const base64Data = event.target.result;
+                try {
+                    // Verificar si existe la entrada super-admin en laboratorios
+                    const { data: existing } = await sb.from('laboratorios').select('id').eq('id', labId).single();
+                    
+                    if (!existing) {
+                        await sb.from('laboratorios').insert({ id: labId, nombre: 'Super Admin', activo: true, logo: base64Data });
+                    } else {
+                        await sb.from('laboratorios').update({ logo: base64Data }).eq('id', labId);
+                    }
+                    
+                    initLabBranding();
+                    alert('Logo actualizado correctamente');
+                } catch (err) {
+                    console.error('Error al subir logo:', err);
+                    alert('Error al guardar el logo');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Cerrar menú al hacer clic fuera
+        document.addEventListener('click', () => closeLogoMenu());
+
         // ==================== CRUD LABORATORIOS (SUPABASE) ====================
         document.getElementById('lab-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -531,6 +714,7 @@
         }
 
         // ==================== INICIO ====================
+        initLabBranding();
         refreshData();
         // Refrescar cada 30 segundos
         setInterval(refreshData, 30000);
