@@ -245,14 +245,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== ESTADO GLOBAL LOCAL ====================
 const AppState = {
     timers: [],
-<<<<<<< HEAD
     presets: [],
     activeAlarms: {},
-    timeOffset: 0 // Diferencia entre reloj local y servidor
-=======
-    activeAlarms: {},
-    serverTimeOffset: 0 // Diferencia entre servidor y PC local
->>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
+    serverTimeOffset: 0 // Diferencia entre servidor y PC local (ms)
 };
 
 async function syncTimeWithServer() {
@@ -290,7 +285,7 @@ const elements = {
 function formatTime(totalSeconds) {
     const hours = Math.floor(Math.max(0, totalSeconds) / 3600);
     const minutes = Math.floor((Math.max(0, totalSeconds) % 3600) / 60);
-    const seconds = Math.floor(Math.max(0, totalSeconds) % 60);
+    const seconds = Math.floor((Math.max(0, totalSeconds) % 60));
 
     if (hours > 0) {
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -389,29 +384,6 @@ function showNotification(timer) {
     }
 }
 
-async function syncWithServerTime() {
-    try {
-        const start = Date.now();
-        const response = await fetch('/api/time');
-        const end = Date.now();
-        const { serverTime } = await response.json();
-        
-        // Latencia estimada (ida y vuelta / 2)
-        const latency = (end - start) / 2;
-        // El offset es la diferencia entre el tiempo del servidor y el tiempo local (ajustado por latencia)
-        AppState.timeOffset = serverTime - (end - latency);
-        
-        console.log(`[Sincro] Servidor: ${new Date(serverTime).toLocaleTimeString()}, Local: ${new Date().toLocaleTimeString()}, Offset: ${AppState.timeOffset}ms`);
-    } catch (e) {
-        console.warn('No se pudo sincronizar el reloj con el servidor local. Usando hora del sistema.', e);
-        AppState.timeOffset = 0;
-    }
-}
-
-// Sincronizar al inicio y cada 5 minutos
-syncWithServerTime();
-setInterval(syncWithServerTime, 5 * 60 * 1000);
-
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -499,7 +471,6 @@ async function loadInitialData() {
         console.log('Nuevo historial detectado:', payload);
         HistoryManager.addEvent(payload.new);
     })
-<<<<<<< HEAD
     .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -522,7 +493,11 @@ async function loadInitialData() {
         }
     })
     .subscribe((status) => {
-        console.log('Estado del canal Realtime:', status);
+        if (status === 'SUBSCRIBED') {
+            console.log('✅ Realtime conectado con éxito al lab:', labId);
+        } else {
+            console.error('⚠️ Realtime con problemas de conexión:', status);
+        }
     });
 }
 
@@ -551,14 +526,6 @@ function updatePresetsDatalist() {
         opt.value = p.sigla;
         opt.textContent = p.descripcion || '';
         datalist.appendChild(opt);
-=======
-    .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-            console.log('✅ Realtime conectado con éxito al lab:', labId);
-        } else {
-            console.error('⚠️ Realtime con problemas de conexión:', status);
-        }
->>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
     });
 }
 
@@ -576,16 +543,10 @@ async function logHistoryLocally(action, timer) {
 
 // MOTOR DEL RELOJ LOCAL (Corrección de Sincronización)
 setInterval(async () => {
-    let requiresRender = false;
     const now = Date.now() + AppState.serverTimeOffset; // Usar hora sincronizada
     AppState.timers.forEach(t => {
         if (t.isRunning && !t.isPaused && !t.isCompleted && t.targetTime) {
             const target = new Date(t.targetTime).getTime();
-<<<<<<< HEAD
-            // USAMOS LA HORA CORREGIDA
-            const now = Date.now() + AppState.timeOffset;
-=======
->>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
             const diff = Math.floor((target - now) / 1000);
             
             t.remainingSeconds = Math.max(0, diff);
@@ -729,13 +690,8 @@ window.toggleTimer = async (id) => {
         logHistoryLocally('PAUSADO', timer);
     } else {
         // Iniciar - actualizar UI localmente primero
-<<<<<<< HEAD
-        // USAMOS LA HORA CORREGIDA PARA CALCULAR EL TARGET
-        const targetTime = new Date(Date.now() + AppState.timeOffset + (timer.remainingSeconds * 1000)).toISOString();
-=======
         const nowReal = Date.now() + AppState.serverTimeOffset;
         const targetTime = new Date(nowReal + (timer.remainingSeconds * 1000)).toISOString();
->>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
         timer.isRunning = true;
         timer.isPaused = false;
         timer.targetTime = targetTime;
@@ -890,13 +846,9 @@ elements.form.addEventListener('submit', async (e) => {
     }
 
     if (patientName && studyType && totalSeconds > 0) {
-<<<<<<< HEAD
         // USAMOS LA HORA CORREGIDA PARA CALCULAR EL TARGET INICIAL
-        const targetTimeIso = new Date(Date.now() + AppState.timeOffset + (totalSeconds * 1000)).toISOString();
-=======
         const nowReal = Date.now() + AppState.serverTimeOffset;
         const targetTimeIso = new Date(nowReal + (totalSeconds * 1000)).toISOString();
->>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
         const newTimerId = Date.now().toString();
         const newTimerData = {
             id: newTimerId,
@@ -989,10 +941,14 @@ const HistoryManager = {
 
         let query = sb.from('historial').select('*').eq('laboratorio_id', labId);
         
-        if (start) query = query.gte('timestamp', new Date(start).toISOString());
+        if (start) {
+            // Asegurar inicio del día local
+            const startDate = new Date(start + "T00:00:00");
+            query = query.gte('timestamp', startDate.toISOString());
+        }
         if (end) {
-            const endDate = new Date(end);
-            endDate.setHours(23, 59, 59, 999);
+            // Asegurar fin del día local
+            const endDate = new Date(end + "T23:59:59.999");
             query = query.lte('timestamp', endDate.toISOString());
         }
 
