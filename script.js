@@ -239,7 +239,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadInitialData();
-    syncTimeWithServer(); // Sincronizar reloj oficial
+    
+    // Sincronización de Reloj Inicial y Periódica (Cada 10 segundos)
+    syncTimeWithServer().then(() => {
+        setInterval(syncTimeWithServer, 10000); 
+    });
 });
 
 // ==================== ESTADO GLOBAL LOCAL ====================
@@ -253,20 +257,35 @@ const AppState = {
 async function syncTimeWithServer() {
     try {
         const start = Date.now();
-        const response = await fetch(supabaseUrl + '/rest/v1/?select=id', {
-            headers: { 'apikey': supabaseKey }
-        });
+        // Usamos el RPC get_server_time para obtener milisegundos reales de Supabase
+        const { data: serverMs, error } = await sb.rpc('get_server_time');
         const end = Date.now();
-        const latency = (end - start) / 2;
-        const serverDateStr = response.headers.get('date');
         
-        if (serverDateStr) {
-            const serverTime = new Date(serverDateStr).getTime() + latency;
-            AppState.serverTimeOffset = serverTime - Date.now();
-            console.log('🕒 Sincronización de reloj OK. Desfase:', AppState.serverTimeOffset, 'ms');
-        }
+        if (error) throw error;
+
+        const latency = (end - start) / 2;
+        const syncedServerTime = serverMs + latency;
+        AppState.serverTimeOffset = syncedServerTime - end;
+        
+        console.log(`🕒 Sincronización OK. Offset: ${AppState.serverTimeOffset}ms (Latencia: ${latency}ms)`);
     } catch (e) {
-        console.warn('No se pudo sincronizar el reloj con el servidor', e);
+        console.warn('⚠️ Falló sincronización precisa. Usando fallback de cabeceras...', e);
+        // Fallback: usar cabeceras HTTP si el RPC falla
+        try {
+            const start = Date.now();
+            const response = await fetch(supabaseUrl + '/rest/v1/?select=id', {
+                headers: { 'apikey': supabaseKey }
+            });
+            const end = Date.now();
+            const serverDateStr = response.headers.get('date');
+            if (serverDateStr) {
+                const latency = (end - start) / 2;
+                const serverTime = new Date(serverDateStr).getTime() + latency;
+                AppState.serverTimeOffset = serverTime - end;
+            }
+        } catch (err2) {
+            console.error('❌ Error total en sincronización:', err2);
+        }
     }
 }
 
