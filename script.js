@@ -369,13 +369,14 @@ function stopAlarm(timerId) {
     if (AppState.activeAlarms[timerId]) {
         clearInterval(AppState.activeAlarms[timerId]);
         delete AppState.activeAlarms[timerId];
+    }
 
-        const card = document.getElementById(`timer-${timerId}`);
-        if (card) {
-            card.classList.remove('alarm-active');
-            const stopBtn = card.querySelector('.control-btn-stop-compact');
-            if (stopBtn) stopBtn.remove();
-        }
+    // Limpieza de UI incondicional (siempre que exista la tarjeta)
+    const card = document.getElementById(`timer-${timerId}`);
+    if (card) {
+        card.classList.remove('alarm-active');
+        const stopBtn = card.querySelector('.control-btn-stop-compact');
+        if (stopBtn) stopBtn.remove();
     }
 }
 
@@ -462,18 +463,25 @@ async function loadInitialData() {
                 renderTimers();
             }
         } else if (payload.eventType === 'UPDATE') {
-            const idx = AppState.timers.findIndex(t => t.id === payload.new.id);
+            const idx = AppState.timers.findIndex(t => t.id == payload.new.id);
             if (idx !== -1) {
                 const wasNotCompleted = !AppState.timers[idx].isCompleted;
+                const wasAcknowledged = AppState.timers[idx].isAcknowledged;
+                
                 AppState.timers[idx] = payload.new;
                 
-                if (payload.new.isCompleted && wasNotCompleted) {
-                    startContinuousAlarm(payload.new.id);
-                    showNotification(payload.new);
-                } else if (!payload.new.isCompleted) {
-                    // Si ya no está completado (se reinició o pausó), apagar alarma local
+                if (payload.new.isCompleted && !payload.new.isAcknowledged) {
+                    // Si está completado y NO ha sido silenciado aún
+                    if (wasNotCompleted || wasAcknowledged) {
+                        // Si acaba de completarse O si alguien reseteó el silencio
+                        startContinuousAlarm(payload.new.id);
+                        showNotification(payload.new);
+                    }
+                } else {
+                    // Si ya NO está completado (reset) o ya fue silenciado (isAcknowledged: true)
                     stopAlarm(payload.new.id);
                 }
+                
                 updateTimerDisplay(payload.new.id);
             }
         } else if (payload.eventType === 'DELETE') {
@@ -667,7 +675,7 @@ function createTimerCard(timer) {
 }
 
 function updateTimerDisplay(timerId) {
-    const timer = AppState.timers.find(t => t.id === timerId);
+    const timer = AppState.timers.find(t => t.id == timerId);
     if (!timer) return;
 
     const card = document.getElementById(`timer-${timerId}`);
@@ -689,14 +697,14 @@ function updateTimerDisplay(timerId) {
     }
 
     let stopBtn = card.querySelector('.control-btn-stop-compact');
-    if (timer.isCompleted && !stopBtn) {
+    if (timer.isCompleted && !timer.isAcknowledged && !stopBtn) {
         const controlsDiv = card.querySelector('.timer-controls-compact');
         const newBtn = document.createElement('button');
         newBtn.className = 'control-btn-compact control-btn-stop-compact';
         newBtn.innerHTML = '🔕 Detener Alarma';
         newBtn.onclick = () => handleStopAlarm(timer.id);
         controlsDiv.appendChild(newBtn);
-    } else if (!timer.isCompleted && stopBtn) {
+    } else if ((!timer.isCompleted || timer.isAcknowledged) && stopBtn) {
         stopBtn.remove();
     }
 }
@@ -776,16 +784,16 @@ window.deleteTimer = async (id) => {
 
 window.handleStopAlarm = async (id) => {
     stopAlarm(id);
-    // Para que se detenga el sonido en todas las PC al mismo tiempo,
-    // actualizamos la DB poniendo isCompleted en false.
-    try {
-        await sb.from('timers').update({ 
-            isCompleted: false,
-            isRunning: false,
-            isPaused: true 
-        }).eq('id', id);
-    } catch (e) {
-        console.error('Error al silenciar alarma globalmente:', e);
+    const timer = AppState.timers.find(t => t.id == id);
+    if (timer) {
+        timer.isAcknowledged = true;
+        updateTimerDisplay(id); // Actualizar UI localmente de inmediato
+        // Sincronizar el "silencio" con todas las demás PCs
+        try {
+            await sb.from('timers').update({ isAcknowledged: true }).eq('id', id);
+        } catch (e) {
+            console.error('Error al silenciar alarma globalmente:', e);
+        }
     }
 };
 
