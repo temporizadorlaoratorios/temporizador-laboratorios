@@ -888,8 +888,9 @@ elements.form.addEventListener('submit', async (e) => {
     
     if (currentMode === 'fixed') {
         seconds = 0;
-        const now = new Date();
-        const targetDate = new Date();
+        const nowReal = Date.now() + AppState.serverTimeOffset;
+        const now = new Date(nowReal); 
+        const targetDate = new Date(nowReal); 
         targetDate.setHours(hours, minutes, 0, 0);
         if (targetDate <= now) targetDate.setDate(targetDate.getDate() + 1);
         totalSeconds = Math.floor((targetDate - now) / 1000);
