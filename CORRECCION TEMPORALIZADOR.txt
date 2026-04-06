@@ -4,9 +4,12 @@ Planear, pensar y responder siempre en español
 
 modificaciones 06/04/26 8 hs, subir
 
+<<<<<<< HEAD
 ver que ande conf tiempos
 ver que ande historial
 
+=======
+>>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
 ver que se apague bien chrome cuando abre pwa
 ver si agrego laboratorios conectados (hoy tengo laboratorios, timer y lab con timer)
 

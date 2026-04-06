@@ -239,15 +239,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadInitialData();
+    syncTimeWithServer(); // Sincronizar reloj oficial
 });
 
 // ==================== ESTADO GLOBAL LOCAL ====================
 const AppState = {
     timers: [],
+<<<<<<< HEAD
     presets: [],
     activeAlarms: {},
     timeOffset: 0 // Diferencia entre reloj local y servidor
+=======
+    activeAlarms: {},
+    serverTimeOffset: 0 // Diferencia entre servidor y PC local
+>>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
 };
+
+async function syncTimeWithServer() {
+    try {
+        const start = Date.now();
+        const response = await fetch(supabaseUrl + '/rest/v1/?select=id', {
+            headers: { 'apikey': supabaseKey }
+        });
+        const end = Date.now();
+        const latency = (end - start) / 2;
+        const serverDateStr = response.headers.get('date');
+        
+        if (serverDateStr) {
+            const serverTime = new Date(serverDateStr).getTime() + latency;
+            AppState.serverTimeOffset = serverTime - Date.now();
+            console.log('🕒 Sincronización de reloj OK. Desfase:', AppState.serverTimeOffset, 'ms');
+        }
+    } catch (e) {
+        console.warn('No se pudo sincronizar el reloj con el servidor', e);
+    }
+}
 
 const elements = {
     form: document.getElementById('timer-form'),
@@ -430,8 +456,11 @@ async function loadInitialData() {
     }, payload => {
         console.log('Cambio en Timer detectado:', payload);
         if (payload.eventType === 'INSERT') {
-            AppState.timers.push(payload.new);
-            renderTimers();
+            // Solo agregar si no existe ya localmente
+            if (!AppState.timers.find(t => t.id === payload.new.id)) {
+                AppState.timers.push(payload.new);
+                renderTimers();
+            }
         } else if (payload.eventType === 'UPDATE') {
             const idx = AppState.timers.findIndex(t => t.id === payload.new.id);
             if (idx !== -1) {
@@ -441,6 +470,9 @@ async function loadInitialData() {
                 if (payload.new.isCompleted && wasNotCompleted) {
                     startContinuousAlarm(payload.new.id);
                     showNotification(payload.new);
+                } else if (!payload.new.isCompleted) {
+                    // Si ya no está completado (se reinició o pausó), apagar alarma local
+                    stopAlarm(payload.new.id);
                 }
                 updateTimerDisplay(payload.new.id);
             }
@@ -459,6 +491,7 @@ async function loadInitialData() {
         console.log('Nuevo historial detectado:', payload);
         HistoryManager.addEvent(payload.new);
     })
+<<<<<<< HEAD
     .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -510,6 +543,14 @@ function updatePresetsDatalist() {
         opt.value = p.sigla;
         opt.textContent = p.descripcion || '';
         datalist.appendChild(opt);
+=======
+    .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            console.log('✅ Realtime conectado con éxito al lab:', labId);
+        } else {
+            console.error('⚠️ Realtime con problemas de conexión:', status);
+        }
+>>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
     });
 }
 
@@ -528,11 +569,15 @@ async function logHistoryLocally(action, timer) {
 // MOTOR DEL RELOJ LOCAL (Corrección de Sincronización)
 setInterval(async () => {
     let requiresRender = false;
+    const now = Date.now() + AppState.serverTimeOffset; // Usar hora sincronizada
     AppState.timers.forEach(t => {
         if (t.isRunning && !t.isPaused && !t.isCompleted && t.targetTime) {
             const target = new Date(t.targetTime).getTime();
+<<<<<<< HEAD
             // USAMOS LA HORA CORREGIDA
             const now = Date.now() + AppState.timeOffset;
+=======
+>>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
             const diff = Math.floor((target - now) / 1000);
             
             t.remainingSeconds = Math.max(0, diff);
@@ -676,8 +721,13 @@ window.toggleTimer = async (id) => {
         logHistoryLocally('PAUSADO', timer);
     } else {
         // Iniciar - actualizar UI localmente primero
+<<<<<<< HEAD
         // USAMOS LA HORA CORREGIDA PARA CALCULAR EL TARGET
         const targetTime = new Date(Date.now() + AppState.timeOffset + (timer.remainingSeconds * 1000)).toISOString();
+=======
+        const nowReal = Date.now() + AppState.serverTimeOffset;
+        const targetTime = new Date(nowReal + (timer.remainingSeconds * 1000)).toISOString();
+>>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
         timer.isRunning = true;
         timer.isPaused = false;
         timer.targetTime = targetTime;
@@ -724,7 +774,20 @@ window.deleteTimer = async (id) => {
     }
 };
 
-window.handleStopAlarm = (id) => stopAlarm(id);
+window.handleStopAlarm = async (id) => {
+    stopAlarm(id);
+    // Para que se detenga el sonido en todas las PC al mismo tiempo,
+    // actualizamos la DB poniendo isCompleted en false.
+    try {
+        await sb.from('timers').update({ 
+            isCompleted: false,
+            isRunning: false,
+            isPaused: true 
+        }).eq('id', id);
+    } catch (e) {
+        console.error('Error al silenciar alarma globalmente:', e);
+    }
+};
 
 // ==================== FORMULARIO ====================
 function formatInputValue(input) {
@@ -819,11 +882,15 @@ elements.form.addEventListener('submit', async (e) => {
     }
 
     if (patientName && studyType && totalSeconds > 0) {
+<<<<<<< HEAD
         // USAMOS LA HORA CORREGIDA PARA CALCULAR EL TARGET INICIAL
         const targetTimeIso = new Date(Date.now() + AppState.timeOffset + (totalSeconds * 1000)).toISOString();
+=======
+        const nowReal = Date.now() + AppState.serverTimeOffset;
+        const targetTimeIso = new Date(nowReal + (totalSeconds * 1000)).toISOString();
+>>>>>>> cdb22de0f87fd5f4a7423991e1564591d52b7f73
         const newTimerId = Date.now().toString();
-        
-        await sb.from('timers').insert({
+        const newTimerData = {
             id: newTimerId,
             laboratorio_id: labId,
             patientName,
@@ -834,7 +901,13 @@ elements.form.addEventListener('submit', async (e) => {
             isRunning: true,
             isPaused: false,
             isCompleted: false
-        });
+        };
+
+        // Actualizar localmente al instante para el creador
+        AppState.timers.push(newTimerData);
+        renderTimers();
+
+        await sb.from('timers').insert(newTimerData);
 
         // Insert log
         logHistoryLocally('CREADO', { laboratorio_id: labId, patientName, studyType });
