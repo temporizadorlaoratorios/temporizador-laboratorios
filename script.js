@@ -540,38 +540,38 @@ async function loadInitialData() {
         } else if (payload.eventType === 'UPDATE') {
             const idx = AppState.timers.findIndex(t => t.id == payload.new.id);
             if (idx !== -1) {
-                const wasNotCompleted = !AppState.timers[idx].isCompleted;
-                const wasAcknowledged = AppState.timers[idx].isAcknowledged;
-                const prevVisual = AppState.timers[idx].visualRemaining;
+                const localTimer = AppState.timers[idx];
+                const wasCompleted = localTimer.isCompleted;
+                const wasAcknowledged = localTimer.isAcknowledged;
 
-                AppState.timers[idx] = payload.new;
-                
-                // Prevenir Race Condition: Si a nivel local ya lo silenciamos, y nos llega
-                // un evento viejo de Supabase confirmando que 'llegó a 0' (pero sin el silencio),
-                // ignoramos ese falso positivo de 'no silenciado'.
-                if (wasAcknowledged && payload.new.isCompleted && !payload.new.isRunning) {
-                    payload.new.isAcknowledged = true;
-                    AppState.timers[idx].isAcknowledged = true;
+                // Mezcla segura: Preservar propiedades locales si payload viene incompleto
+                let updated = { ...localTimer, ...payload.new };
+
+                // PROTECCIÓN ESTRICTA CONTRA REVERSIONES (Time Travel Prevention)
+                // Si ya estaba completado localmente, no permitir que un evento rezagado lo des-complete
+                // (a menos que sea un reinicio explícito donde targetTime === null)
+                if (wasCompleted && !updated.isCompleted && updated.targetTime !== null) {
+                    updated.isCompleted = true;
+                    updated.isRunning = false;
+                    updated.remainingSeconds = 0;
                 }
                 
-                if (payload.new.isCompleted && !payload.new.isAcknowledged) {
-                    // El motor interno matemático de cada PC (setInterval) es 100% responsable 
-                    // de encender la alarma al momento exacto en que llega a 0.
-                    // NO permitiremos que los rebotes de red enciendan alarmas, para evitar el efecto 'rearranque'
-                    // cuando llega un evento viejo de Supabase con lag.
-                    // showNotification sí puede quedar para sincronizar visualmente en nuevas PCs.
-                    if (wasNotCompleted || wasAcknowledged) {
-                        // Opcional: Aquí solo mostraríamos notificación, pero para no saturar con duplicados
-                        // lo ideal es no llamar al continuous alarm
-                    }
+                // Si ya estaba silenciado localmente, no permitir que un evento viejo lo des-silencie
+                if (wasAcknowledged && updated.isCompleted) {
+                    updated.isAcknowledged = true;
+                }
+
+                AppState.timers[idx] = updated;
+                
+                if (updated.isCompleted && !updated.isAcknowledged) {
+                    // El motor local es quien enciende. No encendemos desde aquí.
                 } else {
                     // RED DE SEGURIDAD ABSOLUTA:
-                    // Si ya NO está completado (reset) o ya fue silenciado (isAcknowledged: true)
-                    // Forzamos el silenciado total pase lo que pase. 
-                    stopAlarm(payload.new.id);
+                    // Si ya NO está completado o ya fue silenciado (isAcknowledged: true)
+                    stopAlarm(updated.id);
                 }
                 
-                updateTimerDisplay(payload.new.id);
+                updateTimerDisplay(updated.id);
             }
         } else if (payload.eventType === 'DELETE') {
             stopAlarm(payload.old.id);
@@ -899,7 +899,12 @@ window.handleStopAlarm = async (id) => {
 
         // Sincronizar el "silencio" en la base de datos de manera definitiva
         try {
-            await sb.from('timers').update({ isAcknowledged: true }).eq('id', id);
+            await sb.from('timers').update({ 
+                isAcknowledged: true,
+                isCompleted: true,
+                isRunning: false,
+                remainingSeconds: 0
+            }).eq('id', id);
         } catch (e) {
             console.error('Error al silenciar alarma globalmente:', e);
         }
