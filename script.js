@@ -254,6 +254,34 @@ const AppState = {
     serverTimeOffset: 0 // Diferencia entre servidor y PC local (ms)
 };
 
+// --- HACK ANTI-THROTTLING PARA SEGUNDO PLANO ---
+const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+silentAudio.loop = true;
+silentAudio.volume = 0.01;
+let backgroundModeEnabled = false;
+
+function enableBackgroundMode() {
+    if (!backgroundModeEnabled) {
+        silentAudio.play().then(() => {
+            backgroundModeEnabled = true;
+            console.log('🛡️ Protección anti-suspensión activada.');
+        }).catch(e => console.warn('No se pudo activar protección (requiere clic previo)', e));
+    }
+}
+
+// Activar al primer clic o tap en cualquier parte de la pantalla
+document.addEventListener('click', enableBackgroundMode, { once: true });
+document.addEventListener('touchstart', enableBackgroundMode, { once: true });
+
+// --- RECARGA AUTOMÁTICA AL MAXIMIZAR ---
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log('🔄 Ventana maximizada: Forzando recarga de datos para evitar desincronización...');
+        loadInitialData(); 
+    }
+});
+// -----------------------------------------------
+
 async function syncTimeWithServer() {
     try {
         const start = Date.now();
@@ -585,6 +613,8 @@ setInterval(async () => {
                 t.remainingSeconds = 0;
                 t.isRunning = false;
                 t.isCompleted = true;
+                
+                updateTimerDisplay(t.id); // Forzar que aparezca el botón "Detener Alarma" instantáneamente localmente
                 
                 startContinuousAlarm(t.id);
                 showNotification(t);
