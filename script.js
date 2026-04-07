@@ -458,10 +458,6 @@ async function loadInitialData() {
             // Solo agregar si no existe ya localmente
             if (!AppState.timers.find(t => t.id === payload.new.id)) {
                 const timer = payload.new;
-                // Inicializar visualRemaining con el tiempo teórico al recibirlo
-                const now = Date.now() + AppState.serverTimeOffset;
-                const target = new Date(timer.targetTime).getTime();
-                timer.visualRemaining = Math.max(0, (target - now) / 1000);
                 AppState.timers.push(timer);
                 renderTimers();
             }
@@ -474,14 +470,7 @@ async function loadInitialData() {
 
                 AppState.timers[idx] = payload.new;
                 
-                // Si el temporizador se ha reiniciado (no está corriendo ni pausado ni completado)
-                // o si la diferencia es muy grande, actualizamos visualRemaining
-                if (!payload.new.isRunning && !payload.new.isPaused && !payload.new.isCompleted) {
-                    AppState.timers[idx].visualRemaining = payload.new.remainingSeconds;
-                } else {
-                    AppState.timers[idx].visualRemaining = prevVisual; // Mantener progreso visual local para fluidez
-                }
-                
+                // No necesitamos update manual de visualRemaining porque usa directamente theoreticalRemaining
                 if (payload.new.isCompleted && !payload.new.isAcknowledged) {
                     // Si está completado y NO ha sido silenciado aún
                     if (wasNotCompleted || wasAcknowledged) {
@@ -589,24 +578,11 @@ setInterval(async () => {
             const target = new Date(t.targetTime).getTime();
             const theoreticalRemaining = Math.max(0, (target - now) / 1000);
             
-            // Sincronización directa sin warping agresivo para evitar variaciones visuales extrañas
-            // Si hay un cambio significativo o es la primera vez, igualamos
-            if (t.visualRemaining === undefined || Math.abs(t.visualRemaining - theoreticalRemaining) > 2) {
-                t.visualRemaining = theoreticalRemaining;
-            } else {
-                // Suavizado mínimo: avanzar 0.1s pero limitando el desfase
-                t.visualRemaining = Math.max(0, t.visualRemaining - 0.1);
-                // Si visual quedó atrás de theoretical, lo adelantamos un poquito
-                if (t.visualRemaining > theoreticalRemaining + 0.1) t.visualRemaining -= 0.05;
-                if (t.visualRemaining < theoreticalRemaining - 0.1) t.visualRemaining += 0.05;
-            }
+            t.remainingSeconds = Math.round(theoreticalRemaining);
 
-            t.remainingSeconds = Math.round(t.visualRemaining);
-
-            // Disparar completado cuando AMBOS coincidan en 0 o el real llegue a 0
-            if ((theoreticalRemaining <= 0 || t.visualRemaining <= 0) && !t.isCompleted) {
+            // Disparar completado cuando el real llegue a 0
+            if (theoreticalRemaining <= 0 && !t.isCompleted) {
                 t.remainingSeconds = 0;
-                t.visualRemaining = 0;
                 t.isRunning = false;
                 t.isCompleted = true;
                 
@@ -769,7 +745,6 @@ window.toggleTimer = async (id) => {
         const targetTime = new Date(nowReal + (timer.remainingSeconds * 1000)).toISOString();
         timer.isRunning = true;
         timer.isPaused = false;
-        timer.visualRemaining = timer.remainingSeconds; // Sincronizar visual con el tiempo real al iniciar
         timer.targetTime = targetTime;
         updateTimerDisplay(id);
         await sb.from('timers').update({
@@ -787,7 +762,6 @@ window.resetTimer = async (id) => {
     stopAlarm(id);
     // Actualizar UI localmente primero
     timer.remainingSeconds = timer.totalSeconds;
-    timer.visualRemaining = timer.totalSeconds;
     timer.isRunning = false;
     timer.isPaused = false;
     timer.isCompleted = false;
@@ -942,7 +916,6 @@ elements.form.addEventListener('submit', async (e) => {
             studyType: presetMatch ? presetMatch.sigla : studyType, // Usar sigla oficial si coincide
             totalSeconds,
             remainingSeconds: totalSeconds,
-            visualRemaining: totalSeconds, // Inicializar visualmente para evitar parpadeos
             targetTime: targetTimeIso,
             isRunning: true,
             isPaused: false,
