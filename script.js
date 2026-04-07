@@ -798,6 +798,7 @@ window.resetTimer = async (id) => {
     timer.isRunning = false;
     timer.isPaused = false;
     timer.isCompleted = false;
+    timer.isAcknowledged = false;
     timer.targetTime = null;
     updateTimerDisplay(id);
     await sb.from('timers').update({
@@ -805,6 +806,7 @@ window.resetTimer = async (id) => {
         isRunning: false,
         isPaused: false,
         isCompleted: false,
+        isAcknowledged: false,
         targetTime: null
     }).eq('id', id);
     logHistoryLocally('REINICIADO', timer);
