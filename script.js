@@ -664,7 +664,7 @@ function createTimerCard(timer) {
     // Aplicar color del preset si existe
     if (timer.color) {
         card.style.borderColor = timer.color;
-        card.style.boxShadow = `0 0 15px ${timer.color}33`; // 20% alpha
+        card.style.boxShadow = `0 0 20px ${timer.color}44`; // Glow tenue de la tarjeta
         card.setAttribute('data-preset-color', timer.color);
     } else {
         // Fallback a los hardcoded actuales
@@ -680,7 +680,7 @@ function createTimerCard(timer) {
     card.innerHTML = `
         <div class="timer-header-compact">
             <div class="patient-name-compact">${escapeHtml(timer.patientName)}</div>
-            <div class="study-type-compact">
+            <div class="study-type-compact" style="${timer.color ? `color: ${timer.color}; text-shadow: 0 0 5px ${timer.color}66;` : ''}">
                 ${escapeHtml(timer.studyType)} 
                 ${timer.studyType && timer.totalSeconds===0 ? `<span class="target-time-badge">🔔 ${timer.targetTime}</span>` : ''}
             </div>
@@ -719,6 +719,7 @@ function updateTimerDisplay(timerId) {
             timeDisplay.style.webkitTextFillColor = 'initial';
             timeDisplay.style.background = 'none';
             timeDisplay.style.color = timer.color;
+            timeDisplay.style.filter = `drop-shadow(0 0 10px ${timer.color}88)`; // Brillo en los números
         }
     }
 
