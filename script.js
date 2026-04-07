@@ -1213,6 +1213,27 @@ window.deletePreset = async (id) => {
     }
 };
 
+/* Cerrar elementos al clicar afuera */
+document.addEventListener('click', (e) => {
+    // Menú de opciones (3 puntos)
+    const optionsDropdown = document.getElementById('options-dropdown');
+    const optionsBtn = document.getElementById('options-btn');
+    if (optionsDropdown && optionsDropdown.style.display === 'block') {
+        if (!optionsDropdown.contains(e.target) && !optionsBtn.contains(e.target)) {
+            optionsDropdown.style.display = 'none';
+        }
+    }
+
+    // Panel de Historial
+    const historyPanel = document.getElementById('history-panel');
+    const historyBtn = document.getElementById('toggle-history-btn');
+    if (historyPanel && historyPanel.classList.contains('visible')) {
+        if (!historyPanel.contains(e.target) && !historyBtn.contains(e.target)) {
+            historyPanel.classList.remove('visible');
+        }
+    }
+});
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
