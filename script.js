@@ -457,6 +457,16 @@ async function loadInitialData() {
         ...t,
         visualRemaining: t.remainingSeconds
     }));
+    
+    // Detener cualquier sonido fantasma que ya haya sido apagado o eliminado en la base de datos
+    Object.keys(AppState.activeAlarms).forEach(id => {
+        const timer = AppState.timers.find(t => t.id === id);
+        // Si no existe, no está completo, o ya fue reconocido -> pararlo
+        if (!timer || !timer.isCompleted || timer.isAcknowledged) {
+            stopAlarm(id);
+        }
+    });
+
     renderTimers();
 
     // Cargar Historial
@@ -497,6 +507,14 @@ async function loadInitialData() {
                 const prevVisual = AppState.timers[idx].visualRemaining;
 
                 AppState.timers[idx] = payload.new;
+                
+                // Prevenir Race Condition: Si a nivel local ya lo silenciamos, y nos llega
+                // un evento viejo de Supabase confirmando que 'llegó a 0' (pero sin el silencio),
+                // ignoramos ese falso positivo de 'no silenciado'.
+                if (wasAcknowledged && payload.new.isCompleted && !payload.new.isRunning) {
+                    payload.new.isAcknowledged = true;
+                    AppState.timers[idx].isAcknowledged = true;
+                }
                 
                 // No necesitamos update manual de visualRemaining porque usa directamente theoreticalRemaining
                 if (payload.new.isCompleted && !payload.new.isAcknowledged) {
