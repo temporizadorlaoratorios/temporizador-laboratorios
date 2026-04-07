@@ -331,8 +331,8 @@
             </div>
             
             <!-- Formulario para nuevo preset -->
-            <form id="preset-form" class="preset-manager-form">
-                <div style="display: grid; grid-template-columns: 120px 1fr 180px; gap: 10px; margin-bottom: 10px;">
+                <input type="hidden" id="preset-id" value="">
+                <div style="display: grid; grid-template-columns: 120px 1fr 180px 80px; gap: 10px; margin-bottom: 10px;">
                     <div>
                         <label style="font-size: 0.75rem; color: #888;">Sigla (ej: PLR)</label>
                         <input type="text" id="preset-sigla" placeholder="Sigla" required class="form-input-compact" style="width: 100%; box-sizing: border-box;">
@@ -348,6 +348,10 @@
                             <option value="fixed">Hora Fija</option>
                         </select>
                     </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: #888;">Color</label>
+                        <input type="color" id="preset-color" value="#c20078" class="form-input-compact" style="width: 100%; height: 45px; padding: 2px; cursor: pointer; border: none; background: transparent;">
+                    </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: flex-end;">
                     <div style="flex: 1;">
@@ -362,7 +366,10 @@
                         <label style="font-size: 0.75rem; color: #888;">Segundos</label>
                         <input type="number" id="preset-s" value="0" min="0" max="59" class="form-input-compact" style="width: 100%; box-sizing: border-box;">
                     </div>
-                    <button type="submit" class="submit-btn-compact" style="padding: 12px 25px;">Añadir</button>
+                    <div style="display: flex; gap: 5px;">
+                        <button type="submit" id="preset-submit-btn" class="submit-btn-compact" style="padding: 12px 25px;">Añadir</button>
+                        <button type="button" id="preset-cancel-edit-btn" class="control-btn-compact control-btn-secondary-compact" style="display: none; padding: 12px 20px;" onclick="cancelPresetEdit()">Cancelar</button>
+                    </div>
                 </div>
             </form>
 
@@ -372,9 +379,10 @@
                         <tr>
                             <th>Sigla</th>
                             <th>Descripción</th>
-                            <th>Tipo</th>
-                            <th>Tiempo</th>
-                            <th>Acción</th>
+                            <th style="width: 120px;">Tipo</th>
+                            <th style="width: 100px;">Tiempo</th>
+                            <th style="width: 60px;">Color</th>
+                            <th style="width: 100px;">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="presets-list">

@@ -660,10 +660,19 @@ function createTimerCard(timer) {
     if (AppState.activeAlarms[timer.id]) card.classList.add('alarm-active');
 
     const studyTypeUpper = (timer.studyType || '').toUpperCase();
-    if (studyTypeUpper.includes('PLR')) card.classList.add('card-plr');
-    else if (studyTypeUpper.includes('CTGN')) card.classList.add('card-ctgn');
-    else if (studyTypeUpper.includes('CTM')) card.classList.add('card-ctm');
-    else if (studyTypeUpper.includes('HPYLORI') || studyTypeUpper.includes('H PYLORI')) card.classList.add('card-hpylori');
+    
+    // Aplicar color del preset si existe
+    if (timer.color) {
+        card.style.borderColor = timer.color;
+        card.style.boxShadow = `0 0 15px ${timer.color}33`; // 20% alpha
+        card.setAttribute('data-preset-color', timer.color);
+    } else {
+        // Fallback a los hardcoded actuales
+        if (studyTypeUpper.includes('PLR')) card.classList.add('card-plr');
+        else if (studyTypeUpper.includes('CTGN')) card.classList.add('card-ctgn');
+        else if (studyTypeUpper.includes('CTM')) card.classList.add('card-ctm');
+        else if (studyTypeUpper.includes('HPYLORI') || studyTypeUpper.includes('H PYLORI')) card.classList.add('card-hpylori');
+    }
 
     const buttonText = timer.isCompleted ? 'Completado' : (timer.isRunning ? 'Pausar' : 'Iniciar');
     const buttonIcon = timer.isCompleted ? '✓' : (timer.isRunning ? '⏸' : '▶');
@@ -702,10 +711,23 @@ function updateTimerDisplay(timerId) {
     if (!card) return;
 
     const timeDisplay = card.querySelector(`.timer-time-compact[data-timer-id="${timerId}"]`);
-    if (timeDisplay) timeDisplay.textContent = formatTime(timer.remainingSeconds);
+    if (timeDisplay) {
+        timeDisplay.textContent = formatTime(timer.remainingSeconds);
+        // Si hay color de preset, podemos teñir el tiempo también
+        if (timer.color) {
+            timeDisplay.style.webkitBackgroundClip = 'initial';
+            timeDisplay.style.webkitTextFillColor = 'initial';
+            timeDisplay.style.background = 'none';
+            timeDisplay.style.color = timer.color;
+        }
+    }
 
     card.classList.toggle('paused', timer.isPaused);
     card.classList.toggle('completed', timer.isCompleted);
+    
+    if (timer.isCompleted && timer.color) {
+        card.style.boxShadow = `0 0 20px ${timer.color}66`; // 40% alpha
+    }
 
     const button = card.querySelector('.control-btn-primary-compact');
     if (button && !timer.isCompleted) {
@@ -912,17 +934,23 @@ elements.form.addEventListener('submit', async (e) => {
         const nowReal = Date.now() + AppState.serverTimeOffset;
         const targetTimeIso = new Date(nowReal + (totalSeconds * 1000)).toISOString();
         const newTimerId = Date.now().toString();
+
+        // Buscar preset para heredar color e ID
+        const presetMatch = AppState.presets.find(p => p.sigla.toUpperCase() === studyType.toUpperCase());
+        const timerColor = presetMatch ? presetMatch.color : '#c20078';
+
         const newTimerData = {
             id: newTimerId,
             laboratorio_id: labId,
             patientName,
-            studyType,
+            studyType: presetMatch ? presetMatch.sigla : studyType, // Usar sigla oficial si coincide
             totalSeconds,
             remainingSeconds: totalSeconds,
             targetTime: targetTimeIso,
             isRunning: true,
             isPaused: false,
-            isCompleted: false
+            isCompleted: false,
+            color: timerColor
         };
 
         // Actualizar localmente al instante para el creador
@@ -942,6 +970,68 @@ elements.form.addEventListener('submit', async (e) => {
         elements.patientNameInput.focus();
     }
 });
+
+// Manejador del Formulario de Presets (Añadir / Editar)
+const presetForm = document.getElementById('preset-form');
+if (presetForm) {
+    presetForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const id = document.getElementById('preset-id').value;
+        const sigla = document.getElementById('preset-sigla').value.trim().toUpperCase();
+        const descripcion = document.getElementById('preset-desc').value.trim();
+        const tipo = document.getElementById('preset-tipo').value;
+        const horas = parseInt(document.getElementById('preset-h').value) || 0;
+        const minutos = parseInt(document.getElementById('preset-m').value) || 0;
+        const segundos = parseInt(document.getElementById('preset-s').value) || 0;
+        const color = document.getElementById('preset-color').value;
+
+        // --- VALIDACIÓN DE UNICIDAD ---
+        // Buscar si ya existe otro preset con la misma sigla o descripción (excluyendo el que estamos editando si aplica)
+        const duplicateSigla = AppState.presets.find(p => p.id !== id && p.sigla.toUpperCase() === sigla);
+        if (duplicateSigla) {
+            alert(`Ya existe un preajuste con la sigla "${sigla}". Por favor, usa una diferente.`);
+            return;
+        }
+
+        const duplicateDesc = AppState.presets.find(p => p.id !== id && p.descripcion && p.descripcion.toUpperCase() === descripcion.toUpperCase());
+        if (duplicateDesc) {
+            alert(`Ya existe un preajuste con la descripción "${descripcion}". Por favor, usa una diferente.`);
+            return;
+        }
+
+        const presetData = {
+            laboratorio_id: labId,
+            sigla,
+            descripcion,
+            tipo,
+            horas,
+            minutos,
+            segundos,
+            color
+        };
+
+        try {
+            if (id) {
+                // Modo Edición: Actualizar
+                const { error } = await sb.from('ajustes_tiempo').update(presetData).eq('id', id);
+                if (error) throw error;
+                alert('Preajuste actualizado correctamente');
+            } else {
+                // Modo Añadir: Insertar
+                const { error } = await sb.from('ajustes_tiempo').insert(presetData);
+                if (error) throw error;
+                alert('Preajuste añadido correctamente');
+            }
+            
+            cancelPresetEdit(); // Limpiar formulario y salir de modo edición
+            loadPresets(); // Recargar lista
+        } catch (err) {
+            console.error('Error guardando preajuste:', err);
+            alert('Error al guardar el preajuste');
+        }
+    });
+}
 
 if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
@@ -1133,13 +1223,15 @@ document.getElementById('change-password-form')?.addEventListener('submit', asyn
 
 // ==================== GESTIÓN DE PRESETS (AJUSTES) ====================
 window.openPresetsModal = () => {
-    document.getElementById('options-dropdown').style.display = 'none';
+    const drop = document.getElementById('options-dropdown');
+    if (drop) drop.style.display = 'none';
     document.getElementById('modal-presets').style.display = 'flex';
     renderPresetsList();
 };
 
 window.closePresetsModal = () => {
     document.getElementById('modal-presets').style.display = 'none';
+    cancelPresetEdit();
 };
 
 function renderPresetsList() {
@@ -1149,66 +1241,73 @@ function renderPresetsList() {
 
     AppState.presets.forEach(p => {
         const tr = document.createElement('tr');
-        const timeStr = p.tipo === 'duration' 
-            ? `${String(p.horas).padStart(2, '0')}:${String(p.minutos).padStart(2, '0')}:${String(p.segundos).padStart(2, '0')}`
-            : `${String(p.horas).padStart(2, '0')}:${String(p.minutos).padStart(2, '0')} (Fija)`;
+        const time = `${String(p.horas || 0).padStart(2, '0')}:${String(p.minutos || 0).padStart(2, '0')}:${String(p.segundos || 0).padStart(2, '0')}`;
         
         tr.innerHTML = `
-            <td style="font-weight: bold; color: var(--color-primary);">${escapeHtml(p.sigla)}</td>
-            <td>${escapeHtml(p.descripcion || '')}</td>
-            <td style="font-size: 0.75rem;">${p.tipo === 'duration' ? 'Regresiva' : 'Fija'}</td>
-            <td style="font-family: var(--font-mono);">${timeStr}</td>
+            <td><strong>${p.sigla}</strong></td>
+            <td>${p.descripcion || '-'}</td>
+            <td style="font-size: 0.8rem;">${p.tipo === 'duration' ? 'Regresiva' : 'Fija'}</td>
+            <td style="font-family: monospace; font-size: 0.85rem;">${time}</td>
+            <td style="text-align: center;"><span class="color-preview-circle" style="background-color: ${p.color || '#c20078'}"></span></td>
             <td>
-                <button onclick="deletePreset('${p.id}')" style="background: transparent; border: none; color: var(--color-danger); cursor: pointer; padding: 5px;">
-                    🗑️
-                </button>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="editPreset('${p.id}')" class="control-btn-compact control-btn-secondary-compact" style="padding: 4px 8px; flex: 1;" title="Editar">✏️</button>
+                    <button onclick="deletePreset('${p.id}')" class="control-btn-compact control-btn-danger-compact" style="padding: 4px 8px; flex: 1;" title="Eliminar">🗑️</button>
+                </div>
             </td>
         `;
         list.appendChild(tr);
     });
 }
 
-document.getElementById('preset-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const sigla = document.getElementById('preset-sigla').value.toUpperCase().trim();
-    const descripcion = document.getElementById('preset-desc').value.trim();
-    const tipo = document.getElementById('preset-tipo').value;
-    const horas = parseInt(document.getElementById('preset-h').value) || 0;
-    const minutos = parseInt(document.getElementById('preset-m').value) || 0;
-    const segundos = parseInt(document.getElementById('preset-s').value) || 0;
+window.editPreset = (id) => {
+    const p = AppState.presets.find(item => item.id === id);
+    if (!p) return;
 
-    const newPreset = {
-        laboratorio_id: labId,
-        sigla,
-        descripcion,
-        tipo,
-        horas,
-        minutos,
-        segundos
-    };
+    document.getElementById('preset-id').value = p.id;
+    document.getElementById('preset-sigla').value = p.sigla;
+    document.getElementById('preset-desc').value = p.descripcion || '';
+    document.getElementById('preset-tipo').value = p.tipo;
+    document.getElementById('preset-h').value = p.horas || 0;
+    document.getElementById('preset-m').value = p.minutos || 0;
+    document.getElementById('preset-s').value = p.segundos || 0;
+    document.getElementById('preset-color').value = p.color || '#c20078';
 
-    const { error } = await sb.from('ajustes_tiempo').insert(newPreset);
-    if (!error) {
-        document.getElementById('preset-form').reset();
-        await loadPresets();
-        alert('Ajuste guardado correctamente');
-    } else {
-        console.error('Error Supabase:', error);
-        if (error.code === '42P01') {
-            alert('Error: La tabla "ajustes_tiempo" no existe en Supabase. Por favor, ejecuta el código SQL proporcionado anteriormente.');
-        } else {
-            alert('Error al guardar el ajuste: ' + (error.message || 'Error desconocido'));
-        }
-    }
-});
+    document.getElementById('preset-submit-btn').textContent = 'Guardar';
+    document.getElementById('preset-cancel-edit-btn').style.display = 'inline-block';
+    document.getElementById('preset-sigla').focus();
+};
+
+window.cancelPresetEdit = () => {
+    const form = document.getElementById('preset-form');
+    if (form) form.reset();
+    document.getElementById('preset-id').value = '';
+    document.getElementById('preset-submit-btn').textContent = 'Añadir';
+    document.getElementById('preset-cancel-edit-btn').style.display = 'none';
+};
 
 window.deletePreset = async (id) => {
-    if (!confirm('¿Eliminar este ajuste?')) return;
-    const { error } = await sb.from('ajustes_tiempo').delete().eq('id', id);
-    if (!error) {
-        await loadPresets();
-    } else {
-        alert('Error al eliminar');
+    if (!confirm('¿Seguro que deseas eliminar este preajuste?')) return;
+    try {
+        const { error } = await sb.from('ajustes_tiempo').delete().eq('id', id);
+        if (error) throw error;
+        // La actualización vendrá vía Realtime o recargando
+        loadPresets();
+    } catch (err) {
+        console.error('Error eliminando preajuste:', err);
+        alert('Error al eliminar el preajuste');
+    }
+};
+window.deletePreset = async (id) => {
+    if (!confirm('¿Seguro que deseas eliminar este preajuste?')) return;
+    try {
+        const { error } = await sb.from('ajustes_tiempo').delete().eq('id', id);
+        if (error) throw error;
+        // La actualización vendrá vía Realtime o recargando
+        loadPresets();
+    } catch (err) {
+        console.error('Error eliminando preajuste:', err);
+        alert('Error al eliminar el preajuste');
     }
 };
 
@@ -1218,7 +1317,8 @@ document.addEventListener('click', (e) => {
     const optionsDropdown = document.getElementById('options-dropdown');
     const optionsBtn = document.getElementById('options-btn');
     if (optionsDropdown && optionsDropdown.style.display === 'block') {
-        if (!optionsDropdown.contains(e.target) && !optionsBtn.contains(e.target)) {
+        const isOutside = !optionsDropdown.contains(e.target) && (optionsBtn && !optionsBtn.contains(e.target));
+        if (isOutside) {
             optionsDropdown.style.display = 'none';
         }
     }
@@ -1227,13 +1327,15 @@ document.addEventListener('click', (e) => {
     const historyPanel = document.getElementById('history-panel');
     const historyBtn = document.getElementById('toggle-history-btn');
     if (historyPanel && historyPanel.classList.contains('visible')) {
-        if (!historyPanel.contains(e.target) && !historyBtn.contains(e.target)) {
+        const isOutside = !historyPanel.contains(e.target) && (historyBtn && !historyBtn.contains(e.target));
+        if (isOutside) {
             historyPanel.classList.remove('visible');
         }
     }
 });
 
 function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;

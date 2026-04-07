@@ -2,21 +2,26 @@ Planear, pensar y responder siempre en español
 
 
 
-modificaciones 06/04/26 8 hs, subir
 
-ver que ande conf tiempos
-ver que ande historial
-ver que se apague bien chrome cuando abre pwa
 ver si agrego laboratorios conectados (hoy tengo laboratorios, timer y lab con timer)
 
 
+ver si lo hago app store o pwa en Android y apple
 
-corregir app
-sonido que no se apague si cierro app
-que no se apague si se bloquea cel
-ver si lo hago app store o pwa
 
-ver si bajo en pc indabi
+hacer quecuando elimine un laboratorio salga del programa en el acto,  no cuando sale de secion
+
+
+
+
+
+TAMBIEN SUBILO
+GITHUB
+https://github.com/temporizadorlaoratorios
+temporizadorlaoratorios
+Temporizador888@¿
+
+supabase y vercel con cuenta de github
 
 
 
