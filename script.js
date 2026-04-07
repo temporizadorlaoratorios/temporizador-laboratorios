@@ -254,6 +254,9 @@ const AppState = {
     serverTimeOffset: 0 // Diferencia entre servidor y PC local (ms)
 };
 
+let realtimeChannel = null;
+
+
 // --- HACK ANTI-THROTTLING PARA SEGUNDO PLANO ---
 const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
 silentAudio.loop = true;
@@ -430,7 +433,8 @@ function showNotification(timer) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('⏱️ Temporizador Completado', {
             body: `${timer.patientName} - ${timer.studyType}`,
-            icon: 'logo.png'
+            icon: 'logo.png',
+            silent: true // Silenciar campana nativa de Windows para evitar que suene por 5 seg extra
         });
     }
 }
@@ -453,10 +457,30 @@ async function loadInitialData() {
         console.error('Error cargando timers:', error);
     }
 
-    AppState.timers = (timersData || []).map(t => ({
-        ...t,
-        visualRemaining: t.remainingSeconds
-    }));
+    const now = Date.now() + AppState.serverTimeOffset;
+    AppState.timers = (timersData || []).map(t => {
+        // Validación matemática pre-renderizado: Si el tiempo real ya pasó, forzamos completion
+        // Evita el bug donde cargar datos viejos desde Supabase hace "rearrancar" la alarma.
+        if (t.isRunning && !t.isPaused && t.targetTime) {
+            const target = new Date(t.targetTime).getTime();
+            if (target <= now) {
+                t.isCompleted = true;
+                t.isRunning = false;
+                t.remainingSeconds = 0;
+            }
+        }
+        
+        // Conservar el bloqueo de silencio local si la BD está atrasada en registrar el clic
+        const localTimer = AppState.timers.find(local => local.id === t.id);
+        if (localTimer && localTimer.isAcknowledged && !t.isRunning && t.isCompleted) {
+            t.isAcknowledged = true;
+        }
+
+        return {
+            ...t,
+            visualRemaining: t.remainingSeconds
+        };
+    });
     
     // Detener cualquier sonido fantasma que ya haya sido apagado o eliminado en la base de datos
     Object.keys(AppState.activeAlarms).forEach(id => {
@@ -482,9 +506,23 @@ async function loadInitialData() {
     await loadPresets();
 
     // Suscribirse a cambios en DB REALTIME (Reemplazo Socket.io)
-    const channel = sb.channel('db_changes');
+    if (realtimeChannel) {
+        sb.removeChannel(realtimeChannel);
+    }
+    realtimeChannel = sb.channel('db_changes');
     
-    channel
+    realtimeChannel
+    .on('broadcast', { event: 'stop_alarm' }, payload => {
+        if (payload.payload && payload.payload.id) {
+            const id = payload.payload.id;
+            stopAlarm(id);
+            const timer = AppState.timers.find(t => t.id === id);
+            if (timer) {
+                timer.isAcknowledged = true;
+                updateTimerDisplay(id);
+            }
+        }
+    })
     .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -845,7 +883,17 @@ window.handleStopAlarm = async (id) => {
     if (timer) {
         timer.isAcknowledged = true;
         updateTimerDisplay(id); // Actualizar UI localmente de inmediato
-        // Sincronizar el "silencio" con todas las demás PCs
+        
+        // Enviar broadcast ultra-rápido (~50ms) para apagar la alarma instantáneamente en otras PCs
+        if (realtimeChannel) {
+            realtimeChannel.send({
+                type: 'broadcast',
+                event: 'stop_alarm',
+                payload: { id: id }
+            }).catch(e => console.error('Error enviando broadcast:', e));
+        }
+
+        // Sincronizar el "silencio" en la base de datos de manera definitiva
         try {
             await sb.from('timers').update({ isAcknowledged: true }).eq('id', id);
         } catch (e) {
