@@ -554,16 +554,20 @@ async function loadInitialData() {
                     AppState.timers[idx].isAcknowledged = true;
                 }
                 
-                // No necesitamos update manual de visualRemaining porque usa directamente theoreticalRemaining
                 if (payload.new.isCompleted && !payload.new.isAcknowledged) {
-                    // Si está completado y NO ha sido silenciado aún
+                    // El motor interno matemático de cada PC (setInterval) es 100% responsable 
+                    // de encender la alarma al momento exacto en que llega a 0.
+                    // NO permitiremos que los rebotes de red enciendan alarmas, para evitar el efecto 'rearranque'
+                    // cuando llega un evento viejo de Supabase con lag.
+                    // showNotification sí puede quedar para sincronizar visualmente en nuevas PCs.
                     if (wasNotCompleted || wasAcknowledged) {
-                        // Si acaba de completarse O si alguien reseteó el silencio
-                        startContinuousAlarm(payload.new.id);
-                        showNotification(payload.new);
+                        // Opcional: Aquí solo mostraríamos notificación, pero para no saturar con duplicados
+                        // lo ideal es no llamar al continuous alarm
                     }
                 } else {
+                    // RED DE SEGURIDAD ABSOLUTA:
                     // Si ya NO está completado (reset) o ya fue silenciado (isAcknowledged: true)
+                    // Forzamos el silenciado total pase lo que pase. 
                     stopAlarm(payload.new.id);
                 }
                 
