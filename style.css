@@ -483,18 +483,20 @@ header {
 }
 
 .patient-name-compact {
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-family: var(--font-main);
+    font-size: 0.95rem;
+    font-weight: 700;
     color: var(--color-text-secondary);
     margin-bottom: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: 0.02em;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
 }
 
 .study-type-compact {
+    font-family: var(--font-main);
     font-size: 1.1rem;
     color: var(--color-primary);
     font-weight: 800;
@@ -502,6 +504,7 @@ header {
     overflow: hidden;
     text-overflow: ellipsis;
     margin-top: 2px;
+    letter-spacing: -0.02em;
 }
 
 .timer-display-compact {
