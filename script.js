@@ -984,9 +984,8 @@ const HistoryManager = {
     },
     openExport() {
         if (this.exportModal) {
-            // Establecer fechas por defecto
-            const now = new Date();
-            const todayStr = now.toISOString().split('T')[0];
+            // Establecer fechas por defecto locales (YYYY-MM-DD)
+            const todayStr = new Date().toLocaleDateString('sv-SE');
             document.getElementById('export-date-start').value = todayStr;
             document.getElementById('export-date-end').value = todayStr;
             this.exportModal.classList.remove('hidden');
