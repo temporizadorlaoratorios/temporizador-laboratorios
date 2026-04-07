@@ -24,6 +24,29 @@ Temporizador888@¿
 supabase y vercel con cuenta de github
 
 
+ok
+ahora quiero que reevises la logica, teniamos todo hecho para que las pc miraran la hora de supabace e hicieran el calculo con esa hora y no con la de las pc, para que siempre terminaran a ese horario y sonaran juntas en 0.
+tambien configuramos:
+ACTH	Corticotrofina	Regresiva	00:20:00		
+✏️
+🗑️
+CTGN	Curva	Regresiva	02:00:00		
+✏️
+🗑️
+CTM	Cortisol	Fija	08:00:00		
+✏️
+🗑️
+PLR	Prolactina	Regresiva	00:20:00
+
+no sabemos si esto esta afectando pero cuando ponemos CTGN 2 hs, el reloj se adelanta 1 hs o va variando, la logica no esta funcionando
+
+en teoria la configuracion de tiempos con siglas es para que cuando ingresas CTGN te marque 2 hs, pero despues vos podes poner cualquier tiempo y deberia respetar lo que pones y agregas
+
+revisa los timers, porque los relojes se adelantan y se atrasan
+
+
+
+
 
 
 

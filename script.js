@@ -257,7 +257,7 @@ const AppState = {
 async function syncTimeWithServer() {
     try {
         const start = Date.now();
-        // Usamos el RPC get_server_time para obtener milisegundos reales de Supabase
+        // RPC get_server_time devuelve milisegundos desde el epoch (UTC)
         const { data: serverMs, error } = await sb.rpc('get_server_time');
         const end = Date.now();
         
@@ -268,9 +268,13 @@ async function syncTimeWithServer() {
         AppState.serverTimeOffset = syncedServerTime - end;
         
         console.log(`🕒 Sincronización OK. Offset: ${AppState.serverTimeOffset}ms (Latencia: ${latency}ms)`);
+        
+        // Si el offset es demasiado grande (ej: > 1 hora), podría haber un problema de zona horaria en la PC
+        if (Math.abs(AppState.serverTimeOffset) > 1800000) {
+            console.warn('⚠️ Se detectó un desfase mayor a 30 mins. Verifica la zona horaria de la PC.');
+        }
     } catch (e) {
         console.warn('⚠️ Falló sincronización precisa. Usando fallback de cabeceras...', e);
-        // Fallback: usar cabeceras HTTP si el RPC falla
         try {
             const start = Date.now();
             const response = await fetch(supabaseUrl + '/rest/v1/?select=id', {
@@ -454,8 +458,10 @@ async function loadInitialData() {
             // Solo agregar si no existe ya localmente
             if (!AppState.timers.find(t => t.id === payload.new.id)) {
                 const timer = payload.new;
-                // Inicializar tiempo visual con el nominal (como pidió el usuario: "pónle 2 o 3 segundos de más")
-                timer.visualRemaining = timer.totalSeconds;
+                // Inicializar visualRemaining con el tiempo teórico al recibirlo
+                const now = Date.now() + AppState.serverTimeOffset;
+                const target = new Date(timer.targetTime).getTime();
+                timer.visualRemaining = Math.max(0, (target - now) / 1000);
                 AppState.timers.push(timer);
                 renderTimers();
             }
@@ -575,7 +581,7 @@ async function logHistoryLocally(action, timer) {
     await sb.from('historial').insert(historyEvent);
 }
 
-// MOTOR DEL RELOJ LOCAL (Corrección de Sincronización + TIME WARPING)
+// MOTOR DEL RELOJ LOCAL (Sincronización Estricta)
 setInterval(async () => {
     const now = Date.now() + AppState.serverTimeOffset;
     AppState.timers.forEach(t => {
@@ -583,35 +589,22 @@ setInterval(async () => {
             const target = new Date(t.targetTime).getTime();
             const theoreticalRemaining = Math.max(0, (target - now) / 1000);
             
-            // Inicializar visualRemaining si no existe
-            if (t.visualRemaining === undefined) {
+            // Sincronización directa sin warping agresivo para evitar variaciones visuales extrañas
+            // Si hay un cambio significativo o es la primera vez, igualamos
+            if (t.visualRemaining === undefined || Math.abs(t.visualRemaining - theoreticalRemaining) > 2) {
                 t.visualRemaining = theoreticalRemaining;
-            }
-
-            // --- LÓGICA DE DISTORSIÓN (WARPING) ---
-            // Queremos que t.visualRemaining llegue a 0 al mismo tiempo que theoreticalRemaining
-            const gap = t.visualRemaining - theoreticalRemaining;
-            
-            let step = 0.1; // Paso normal (100ms)
-
-            if (theoreticalRemaining > 0) {
-                // Si el desfase es significativo, ajustamos la velocidad del segundero
-                // warpFactor: cuántos segundos visuales perdemos por cada segundo real
-                const warpFactor = t.visualRemaining / theoreticalRemaining;
-                
-                // Limitamos la distorsión para que no sea visualmente agresiva (máximo +- 20%)
-                const clampedWarp = Math.max(0.5, Math.min(2.0, warpFactor));
-                step = 0.1 * clampedWarp;
             } else {
-                // Si ya llegamos al tiempo real, el visual debe colapsar a 0 rápido
-                step = t.visualRemaining; 
+                // Suavizado mínimo: avanzar 0.1s pero limitando el desfase
+                t.visualRemaining = Math.max(0, t.visualRemaining - 0.1);
+                // Si visual quedó atrás de theoretical, lo adelantamos un poquito
+                if (t.visualRemaining > theoreticalRemaining + 0.1) t.visualRemaining -= 0.05;
+                if (t.visualRemaining < theoreticalRemaining - 0.1) t.visualRemaining += 0.05;
             }
 
-            t.visualRemaining = Math.max(0, t.visualRemaining - step);
             t.remainingSeconds = Math.round(t.visualRemaining);
 
-            // Solo disparar completado cuando AMBOS (visual y real) lleguen a 0
-            if (theoreticalRemaining <= 0 && t.visualRemaining <= 0 && !t.isCompleted) {
+            // Disparar completado cuando AMBOS coincidan en 0 o el real llegue a 0
+            if ((theoreticalRemaining <= 0 || t.visualRemaining <= 0) && !t.isCompleted) {
                 t.remainingSeconds = 0;
                 t.visualRemaining = 0;
                 t.isRunning = false;
@@ -624,7 +617,7 @@ setInterval(async () => {
                     remainingSeconds: 0, 
                     isRunning: false, 
                     isCompleted: true 
-                }).eq('id', t.id).then();
+                }).eq('id', t.id).catch(console.error);
                 
                 logHistoryLocally('COMPLETADO', t);
             }
@@ -949,6 +942,7 @@ elements.form.addEventListener('submit', async (e) => {
             studyType: presetMatch ? presetMatch.sigla : studyType, // Usar sigla oficial si coincide
             totalSeconds,
             remainingSeconds: totalSeconds,
+            visualRemaining: totalSeconds, // Inicializar visualmente para evitar parpadeos
             targetTime: targetTimeIso,
             isRunning: true,
             isPaused: false,

@@ -203,6 +203,8 @@ async function logHistory(action, timer) {
 }
 
 // === LÓGICA DEL TEMPORIZADOR ===
+// === LÓGICA DEL TEMPORIZADOR (DESACTIVADA: Usando Supabase como fuente de verdad) ===
+/*
 setInterval(async () => {
     let hasChanges = false;
     timers.forEach(t => {
@@ -231,6 +233,8 @@ setInterval(async () => {
         await writeDB('timers', timersToSave);
     }
 }, 1000);
+*/
+
 
 // === SOCKET.IO EVENTOS ===
 io.on('connection', async (socket) => {
