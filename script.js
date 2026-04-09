@@ -285,6 +285,36 @@ document.addEventListener('visibilitychange', () => {
 });
 // -----------------------------------------------
 
+// MOTOR DE BACKGROUND CON WEB WORKER (Anti-Throttling)
+const workerCode = `
+    let interval;
+    let alarms = {}; // Almacena los contadores para cada alarma activa
+    self.onmessage = function(e) {
+        if (e.data.type === 'start_engine') {
+            interval = setInterval(() => { 
+                self.postMessage({ type: 'tick' }); 
+                // Alertas de sonido (cada 1.5s = 15 ticks)
+                Object.keys(alarms).forEach(id => {
+                    alarms[id]++;
+                    if (alarms[id] >= 15) {
+                        alarms[id] = 0;
+                        self.postMessage({ type: 'beep', id: id });
+                    }
+                });
+            }, 100);
+        } else if (e.data.type === 'start_alarm') {
+            alarms[e.data.id] = 15; // Iniciar disparo en el siguiente tick
+        } else if (e.data.type === 'stop_alarm') {
+            delete alarms[e.data.id];
+        } else if (e.data.type === 'stop_engine') {
+            clearInterval(interval);
+        }
+    };
+`;
+const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+const backgroundWorker = new Worker(URL.createObjectURL(workerBlob));
+backgroundWorker.postMessage({ type: 'start_engine' });
+
 async function syncTimeWithServer() {
     try {
         const start = Date.now();
@@ -378,45 +408,55 @@ function getAudioContext() {
     return globalAudioContext;
 }
 
-// Desbloquear AudioContext con la primera interacción del usuario
+// Desbloquear AudioContext con la primera interacción del usuario y solicitar permisos
 document.addEventListener('click', () => {
     getAudioContext();
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+    }
 }, { once: true });
 
 // Alarma
 function startContinuousAlarm(timerId) {
     if (AppState.activeAlarms[timerId]) return;
+    
+    // UI Actualización
     const card = document.getElementById(`timer-${timerId}`);
     if (card) card.classList.add('alarm-active');
 
-    const alarmInterval = setInterval(() => {
-        try {
-            const audioContext = getAudioContext();
-            const frequencies = [900, 1100, 900, 1100];
-            let currentTime = audioContext.currentTime;
+    // Registrar alarma en Web Worker para evitar el throttling del navegador en background
+    backgroundWorker.postMessage({ type: 'start_alarm', id: timerId });
+    AppState.activeAlarms[timerId] = true;
+}
 
-            frequencies.forEach((freq, index) => {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                oscillator.frequency.value = freq;
-                oscillator.type = 'square';
-                const startTime = currentTime + (index * 0.2);
-                gainNode.gain.setValueAtTime(0.5, startTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.18);
-                oscillator.start(startTime);
-                oscillator.stop(startTime + 0.18);
-            });
-        } catch (e) { console.warn('Error de audio:', e); }
-    }, 1500);
+function playBeepTone() {
+    try {
+        const audioContext = getAudioContext();
+        audioContext.resume(); // Forzar despertar en background si es posible
+        const frequencies = [900, 1100, 900, 1100];
+        let currentTime = audioContext.currentTime;
 
-    AppState.activeAlarms[timerId] = alarmInterval;
+        frequencies.forEach((freq, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.frequency.value = freq;
+            oscillator.type = 'square';
+            const startTime = currentTime + (index * 0.2);
+            gainNode.gain.setValueAtTime(0.5, startTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.18);
+            oscillator.start(startTime);
+            oscillator.stop(startTime + 0.18);
+        });
+    } catch (e) {
+        console.warn('Error reproduciendo audio en background:', e);
+    }
 }
 
 function stopAlarm(timerId) {
     if (AppState.activeAlarms[timerId]) {
-        clearInterval(AppState.activeAlarms[timerId]);
+        backgroundWorker.postMessage({ type: 'stop_alarm', id: timerId });
         delete AppState.activeAlarms[timerId];
     }
 
@@ -432,11 +472,11 @@ function stopAlarm(timerId) {
 function showNotification(timer) {
     if ('Notification' in window && Notification.permission === 'granted') {
         const options = {
-            body: `${timer.patientName} - ${timer.studyType}`,
+            body: `${timer.patientName} - ${timer.studyType} completado.`,
             icon: 'logo.png',
             requireInteraction: true,
-            silent: false, // Forzar que no sea silenciosa (si el navegador suspende la web audio api, la notificación sonará)
-            vibrate: [200, 100, 200, 100, 200, 100, 200]
+            silent: false, // Forzar que no sea silenciosa (ayuda en background)
+            vibrate: [300, 100, 300, 100, 300]
         };
         
         if (navigator.serviceWorker && navigator.serviceWorker.ready) {
@@ -678,39 +718,50 @@ async function logHistoryLocally(action, timer) {
     await sb.from('historial').insert(historyEvent);
 }
 
-// MOTOR DEL RELOJ LOCAL (Sincronización Estricta)
-setInterval(async () => {
-    const now = Date.now() + AppState.serverTimeOffset;
-    AppState.timers.forEach(t => {
-        if (t.isRunning && !t.isPaused && !t.isCompleted && t.targetTime) {
-            const target = new Date(t.targetTime).getTime();
-            const theoreticalRemaining = Math.max(0, (target - now) / 1000);
-            
-            t.remainingSeconds = Math.round(theoreticalRemaining);
-
-            // Disparar completado cuando el real llegue a 0
-            if (theoreticalRemaining <= 0 && !t.isCompleted) {
-                t.remainingSeconds = 0;
-                t.isRunning = false;
-                t.isCompleted = true;
-                
-                updateTimerDisplay(t.id); // Forzar que aparezca el botón "Detener Alarma" instantáneamente localmente
-                
-                startContinuousAlarm(t.id);
-                showNotification(t);
-                
-                sb.from('timers').update({ 
-                    remainingSeconds: 0, 
-                    isRunning: false, 
-                    isCompleted: true 
-                }).eq('id', t.id).catch(console.error);
-                
-                logHistoryLocally('COMPLETADO', t);
+// MOTOR DEL RELOJ LOCAL PROCESADO EN BACKGROUND POR EL WEB WORKER
+backgroundWorker.onmessage = function(e) {
+    if (e.data.type === 'beep') {
+        playBeepTone();
+        // Fallback: mostrar notificación de respaldo cada vez que hace beep (pero limitada para no hacer spam)
+        // Solo las mostramos en la PC receptora si no está en foco y tiene el tab en background
+        if (document.visibilityState !== 'visible') {
+            const t = AppState.timers.find(timer => timer.id === e.data.id);
+            if (t && Math.random() < 0.1) { // 10% de probabilidad por tick (cada 15s) para no floodear el SO
+                // Opcional: showNotification(t); 
             }
-            updateTimerDisplay(t.id);
         }
-    });
-}, 100);
+    } else if (e.data.type === 'tick') {
+        const now = Date.now() + AppState.serverTimeOffset;
+        AppState.timers.forEach(t => {
+            if (t.isRunning && !t.isPaused && !t.isCompleted && t.targetTime) {
+                const target = new Date(t.targetTime).getTime();
+                const theoreticalRemaining = Math.max(0, (target - now) / 1000);
+                
+                t.remainingSeconds = Math.round(theoreticalRemaining);
+
+                if (theoreticalRemaining <= 0 && !t.isCompleted) {
+                    t.remainingSeconds = 0;
+                    t.isRunning = false;
+                    t.isCompleted = true;
+                    
+                    updateTimerDisplay(t.id);
+                    
+                    startContinuousAlarm(t.id);
+                    showNotification(t);
+                    
+                    sb.from('timers').update({ 
+                        remainingSeconds: 0, 
+                        isRunning: false, 
+                        isCompleted: true 
+                    }).eq('id', t.id).catch(console.error);
+                    
+                    logHistoryLocally('COMPLETADO', t);
+                }
+                updateTimerDisplay(t.id);
+            }
+        });
+    }
+};
 
 // ==================== RENDERIZADO UI ====================
 function renderTimers() {
