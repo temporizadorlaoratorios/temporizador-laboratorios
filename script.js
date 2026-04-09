@@ -543,6 +543,14 @@ async function loadInitialData() {
         }
     });
 
+    // Iniciar alarmas para cualquier temporizador recién completado (o que despertó ya completado)
+    AppState.timers.forEach(t => {
+        if (t.isCompleted && !t.isAcknowledged && !AppState.activeAlarms[t.id]) {
+            startContinuousAlarm(t.id);
+            // No floodeamos con showNotification aquí por si son varios de golpe al abrir, o lo hacemos discreto
+        }
+    });
+
     renderTimers();
 
     // Cargar Historial
@@ -828,6 +836,7 @@ function createTimerCard(timer) {
             </button>
             <button class="control-btn-compact control-btn-secondary-compact" onclick="resetTimer('${timer.id}')" title="Reiniciar">↻</button>
             <button class="control-btn-compact control-btn-danger-compact" onclick="deleteTimer('${timer.id}')" title="Eliminar">×</button>
+            ${(timer.isCompleted && !timer.isAcknowledged) ? `<button class="control-btn-compact control-btn-stop-compact" onclick="handleStopAlarm('${timer.id}')">🔕 Detener Alarma</button>` : ''}
         </div>
     `;
     return card;
