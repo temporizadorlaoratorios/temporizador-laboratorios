@@ -46,6 +46,25 @@ revisa los timers, porque los relojes se adelantan y se atrasan
 
 
 
+esto es en https://temporizador-laboratorios.vercel.app/index.html?mode=pwa
+fijate que no esta funcionando
+siendo las 13:23 en la pc
+prueba 1 15:15 lo cargue a las 13:15 tendria que llevar 8 min y lleva 5 min
+plr 13:35 se cargo 13:15 tendria que llevar 8 y lleva 4 min
+acth 13:36 se cargo 13:16 tendria que llevar 7 y lleva 4 min
+ctm no me fije
+
+fijate cuan el esl error
+TAMBIEN SUBILO
+GITHUB
+https://github.com/temporizadorlaoratorios
+temporizadorlaoratorios
+Temporizador888@¿
+
+supabase y vercel con cuenta de github
+
+
+
 
 
 

@@ -431,11 +431,23 @@ function stopAlarm(timerId) {
 
 function showNotification(timer) {
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('⏱️ Temporizador Completado', {
+        const options = {
             body: `${timer.patientName} - ${timer.studyType}`,
             icon: 'logo.png',
-            silent: true // Silenciar campana nativa de Windows para evitar que suene por 5 seg extra
-        });
+            requireInteraction: true,
+            silent: false, // Forzar que no sea silenciosa (si el navegador suspende la web audio api, la notificación sonará)
+            vibrate: [200, 100, 200, 100, 200, 100, 200]
+        };
+        
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification('⏱️ Temporizador Completado', options);
+            }).catch(() => {
+                new Notification('⏱️ Temporizador Completado', options);
+            });
+        } else {
+            new Notification('⏱️ Temporizador Completado', options);
+        }
     }
 }
 
@@ -564,7 +576,15 @@ async function loadInitialData() {
                 AppState.timers[idx] = updated;
                 
                 if (updated.isCompleted && !updated.isAcknowledged) {
-                    // El motor local es quien enciende. No encendemos desde aquí.
+                    // Si el motor local no interceptó el disparo a cuenta 0 (ej. porque la PWA estaba minimizada y Chromium suspendió JS), lo arrancamos aquí.
+                    if (!AppState.activeAlarms[updated.id]) {
+                        updateTimerDisplay(updated.id);
+                        startContinuousAlarm(updated.id);
+                        showNotification(updated);
+                        
+                        // Hacer un intento de despertar audio API (aunque en background puro puede fallar si no hay interacciones previas que lo mantengan vivo, pero con la tab focusada lo aseguramos y la Notification de arriba es nuestro backup ruidoso y fuerte)
+                        // si el timer no tiene stopAlarm, lo creamos forzadamente en la UI
+                    }
                 } else {
                     // RED DE SEGURIDAD ABSOLUTA:
                     // Si ya NO está completado o ya fue silenciado (isAcknowledged: true)
