@@ -390,10 +390,16 @@
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 600; text-transform: uppercase;">Tipo de Timer</label>
-                        <select id="preset-tipo" class="form-input-compact" style="width: 100%; height: 48px;">
-                            <option value="duration">Cuenta Regresiva</option>
-                            <option value="fixed">Hora Fija</option>
-                        </select>
+                        <div class="mode-selector" style="margin: 0; padding: 4px; gap: 0.5rem; height: 48px; border: 1px solid rgba(255, 255, 255, 0.1); background: var(--color-bg-tertiary);">
+                            <label class="mode-option-btn mode-duration" style="flex: 1; justify-content: center; padding: 6px;">
+                                <input type="radio" name="preset-tipo" value="duration" checked>
+                                <span style="font-size: 0.9rem;">⏳ Regresiva</span>
+                            </label>
+                            <label class="mode-option-btn mode-fixed" style="flex: 1; justify-content: center; padding: 6px;">
+                                <input type="radio" name="preset-tipo" value="fixed">
+                                <span style="font-size: 0.9rem;">🔔 Fija</span>
+                            </label>
+                        </div>
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 600; text-transform: uppercase;">Color</label>
@@ -404,16 +410,34 @@
                 </div>
                 <div style="display: flex; gap: 15px; align-items: flex-end; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                     <div style="flex: 1;">
-                        <label style="display: block; font-size: 0.7rem; color: #888; margin-bottom: 4px; text-transform: uppercase;">Horas</label>
-                        <input type="number" id="preset-h" value="0" min="0" max="23" class="form-input-compact" style="width: 100%; text-align: center;">
+                        <label style="display: block; font-size: 0.7rem; color: #888; margin-bottom: 4px; text-transform: uppercase; text-align: center;">Horas</label>
+                        <div class="time-control-wrapper">
+                            <input type="text" id="preset-h" value="00" maxlength="2" class="form-input-compact time-input-with-arrows">
+                            <div class="time-arrows">
+                                <button type="button" class="time-arrow-btn" tabindex="-1" onclick="adjustPresetTime('preset-h', 1)">▲</button>
+                                <button type="button" class="time-arrow-btn" tabindex="-1" onclick="adjustPresetTime('preset-h', -1)">▼</button>
+                            </div>
+                        </div>
                     </div>
                     <div style="flex: 1;">
-                        <label style="display: block; font-size: 0.7rem; color: #888; margin-bottom: 4px; text-transform: uppercase;">Minutos</label>
-                        <input type="number" id="preset-m" value="0" min="0" max="59" class="form-input-compact" style="width: 100%; text-align: center;">
+                        <label style="display: block; font-size: 0.7rem; color: #888; margin-bottom: 4px; text-transform: uppercase; text-align: center;">Minutos</label>
+                        <div class="time-control-wrapper">
+                            <input type="text" id="preset-m" value="00" maxlength="2" class="form-input-compact time-input-with-arrows">
+                            <div class="time-arrows">
+                                <button type="button" class="time-arrow-btn" tabindex="-1" onclick="adjustPresetTime('preset-m', 1)">▲</button>
+                                <button type="button" class="time-arrow-btn" tabindex="-1" onclick="adjustPresetTime('preset-m', -1)">▼</button>
+                            </div>
+                        </div>
                     </div>
                     <div style="flex: 1;">
-                        <label style="display: block; font-size: 0.7rem; color: #888; margin-bottom: 4px; text-transform: uppercase;">Segundos</label>
-                        <input type="number" id="preset-s" value="0" min="0" max="59" class="form-input-compact" style="width: 100%; text-align: center;">
+                        <label style="display: block; font-size: 0.7rem; color: #888; margin-bottom: 4px; text-transform: uppercase; text-align: center;">Segundos</label>
+                        <div class="time-control-wrapper">
+                            <input type="text" id="preset-s" value="00" maxlength="2" class="form-input-compact time-input-with-arrows">
+                            <div class="time-arrows">
+                                <button type="button" class="time-arrow-btn" tabindex="-1" onclick="adjustPresetTime('preset-s', 1)">▲</button>
+                                <button type="button" class="time-arrow-btn" tabindex="-1" onclick="adjustPresetTime('preset-s', -1)">▼</button>
+                            </div>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <button type="submit" id="preset-submit-btn" class="submit-btn-compact" style="min-width: 120px; height: 48px;">Añadir</button>

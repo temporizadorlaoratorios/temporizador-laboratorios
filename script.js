@@ -1137,6 +1137,38 @@ function formatInputValue(input) {
     formatInputValue(input);
 });
 
+// Dar formato igual al de los preset inputs
+function setupPresetInput(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => formatInputValue(el));
+    el.addEventListener('blur', () => formatInputValue(el));
+}
+setupPresetInput('preset-h');
+setupPresetInput('preset-m');
+setupPresetInput('preset-s');
+
+window.adjustTime = (type, amt) => {
+    let input = type === 'hours' ? elements.hoursInput : (type === 'minutes' ? elements.minutesInput : elements.secondsInput);
+    let max = type === 'hours' ? 23 : 59;
+    let val = parseInt(input.value) || 0;
+    val += amt;
+    if (val > max) val = max;
+    if (val < 0) val = 0;
+    input.value = String(val).padStart(2, '0');
+};
+
+window.adjustPresetTime = (id, amt) => {
+    let input = document.getElementById(id);
+    if (!input) return;
+    let max = id === 'preset-h' ? 23 : 59;
+    let val = parseInt(input.value) || 0;
+    val += amt;
+    if (val > max) val = max;
+    if (val < 0) val = 0;
+    input.value = String(val).padStart(2, '0');
+};
+
 let currentMode = 'duration';
 
 window.clearForm = () => {
@@ -1293,7 +1325,8 @@ if (presetForm) {
         const id = document.getElementById('preset-id').value;
         const sigla = document.getElementById('preset-sigla').value.trim().toUpperCase();
         const descripcion = document.getElementById('preset-desc').value.trim();
-        const tipo = document.getElementById('preset-tipo').value;
+        const tipoInput = document.querySelector('input[name="preset-tipo"]:checked');
+        const tipo = tipoInput ? tipoInput.value : 'duration';
         const horas = parseInt(document.getElementById('preset-h').value) || 0;
         const minutos = parseInt(document.getElementById('preset-m').value) || 0;
         const segundos = parseInt(document.getElementById('preset-s').value) || 0;
@@ -1581,10 +1614,15 @@ window.editPreset = (id) => {
     document.getElementById('preset-id').value = p.id;
     document.getElementById('preset-sigla').value = p.sigla;
     document.getElementById('preset-desc').value = p.descripcion || '';
-    document.getElementById('preset-tipo').value = p.tipo;
-    document.getElementById('preset-h').value = p.horas || 0;
-    document.getElementById('preset-m').value = p.minutos || 0;
-    document.getElementById('preset-s').value = p.segundos || 0;
+    document.getElementById('preset-desc').value = p.descripcion || '';
+    
+    // Asignar el tipo con selector de radio
+    const tipoRadio = document.querySelector(`input[name="preset-tipo"][value="${p.tipo || 'duration'}"]`);
+    if (tipoRadio) tipoRadio.checked = true;
+
+    document.getElementById('preset-h').value = String(p.horas || 0).padStart(2, '0');
+    document.getElementById('preset-m').value = String(p.minutos || 0).padStart(2, '0');
+    document.getElementById('preset-s').value = String(p.segundos || 0).padStart(2, '0');
     document.getElementById('preset-color').value = p.color || '#c20078';
 
     document.getElementById('preset-submit-btn').textContent = 'Guardar';
