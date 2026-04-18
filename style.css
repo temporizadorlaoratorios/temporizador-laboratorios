@@ -265,6 +265,30 @@ header {
     font-size: 0.9rem;
 }
 
+.operator-input {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    font-weight: 800;
+    max-width: 150px;
+}
+
+.operator-input::placeholder {
+    color: var(--color-accent);
+    opacity: 0.6;
+}
+
+.input-error {
+    border-color: var(--color-danger) !important;
+    animation: shake 0.4s ease-in-out;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3) !important;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
 /* BOTÓN AGREGAR MÁS GRANDE */
 .submit-btn-compact {
     padding: 12px 20px;

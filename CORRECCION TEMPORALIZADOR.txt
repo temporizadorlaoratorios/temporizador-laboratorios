@@ -14,6 +14,24 @@ hacer quecuando elimine un laboratorio salga del programa en el acto,  no cuando
 
 
 
+EL TEMPORIZADOR NO SUENA EN LA PC RECEPTORA QUE TIENE LA PWA MINIMIZADA
+
+PUEDES VERLO
+
+DEBE SONAR SIEMPRE
+
+
+TAMBIEN SUBILO
+GITHUB
+https://github.com/temporizadorlaoratorios
+temporizadorlaoratorios
+Temporizador888@¿
+
+supabase y vercel con cuenta de github
+
+
+
+
 
 TAMBIEN SUBILO
 GITHUB

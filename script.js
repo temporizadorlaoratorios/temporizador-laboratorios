@@ -240,6 +240,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadInitialData();
     
+    // Cargar último operador usado
+    const lastOp = localStorage.getItem('last-operator');
+    if (lastOp && elements.operatorInput) {
+        elements.operatorInput.value = lastOp;
+    }
+    
     // Sincronización de Reloj Inicial y Periódica (Cada 10 segundos)
     syncTimeWithServer().then(() => {
         setInterval(syncTimeWithServer, 10000); 
@@ -357,6 +363,7 @@ async function syncTimeWithServer() {
 const elements = {
     form: document.getElementById('timer-form'),
     patientNameInput: document.getElementById('patient-name'),
+    operatorInput: document.getElementById('operator-name'), // Nuevo campo
     studyTypeInput: document.getElementById('study-type'),
     hoursInput: document.getElementById('timer-hours'),
     minutesInput: document.getElementById('timer-minutes'),
@@ -715,15 +722,40 @@ function updatePresetsDatalist() {
 }
 
 async function logHistoryLocally(action, timer) {
+    const operator = document.getElementById('operator-name')?.value.trim() || 'SISTEMA';
     const historyEvent = {
         id: Date.now().toString(),
         laboratorio_id: timer.laboratorio_id,
         action: action,
         patientName: timer.patientName,
         studyType: timer.studyType,
+        operador: operator,
         timestamp: new Date().toISOString()
     };
-    await sb.from('historial').insert(historyEvent);
+    
+    // Intentar insertar con el campo operador
+    const { error } = await sb.from('historial').insert(historyEvent);
+    
+    // Si falla porque la columna no existe (Error 42703 en Postgres/Supabase)
+    if (error && (error.code === '42703' || error.message?.includes('column "operador"'))) {
+        console.warn('⚠️ La columna "operador" no existe en la tabla historial. Reintentando sin ella...');
+        delete historyEvent.operador;
+        await sb.from('historial').insert(historyEvent);
+    } else if (error) {
+        console.error('❌ Error al guardar en historial:', error);
+    }
+}
+
+// Nueva función de validación
+function validateOperator() {
+    const op = document.getElementById('operator-name');
+    if (!op || !op.value.trim()) {
+        op?.classList.add('input-error');
+        op?.focus();
+        setTimeout(() => op?.classList.remove('input-error'), 1000);
+        return false;
+    }
+    return true;
 }
 
 // MOTOR DEL RELOJ LOCAL PROCESADO EN BACKGROUND POR EL WEB WORKER
@@ -893,6 +925,7 @@ function updateTimerDisplay(timerId) {
 
 // ==================== ACCIONES DB MANUALES ====================
 window.toggleTimer = async (id) => {
+    if (!validateOperator()) return; // Validación mandatoria
     const timer = AppState.timers.find(t => t.id === id);
     if (!timer) return;
 
@@ -927,6 +960,7 @@ window.toggleTimer = async (id) => {
 };
 
 window.resetTimer = async (id) => {
+    if (!validateOperator()) return; // Validación mandatoria
     const timer = AppState.timers.find(t => t.id === id);
     if (!timer) return;
     stopAlarm(id);
@@ -950,6 +984,7 @@ window.resetTimer = async (id) => {
 };
 
 window.deleteTimer = async (id) => {
+    if (!validateOperator()) return; // Validación mandatoria
     if (confirm('¿Eliminar este temporizador?')) {
         const timer = AppState.timers.find(t => t.id === id);
         stopAlarm(id);
@@ -985,6 +1020,43 @@ window.handleStopAlarm = async (id) => {
                 isRunning: false,
                 remainingSeconds: 0
             }).eq('id', id);
+            
+            // LOG DEL EVENTO (CORRECCIÓN SOLICITADA)
+            logHistoryLocally('ALARMA DETENIDA', timer);
+        } catch (e) {
+            console.error('Error al silenciar alarma globalmente:', e);
+        }
+    }
+};
+
+window.handleStopAlarm = async (id) => {
+    if (!validateOperator()) return; // Validación mandatoria
+    stopAlarm(id);
+    const timer = AppState.timers.find(t => t.id == id);
+    if (timer) {
+        timer.isAcknowledged = true;
+        updateTimerDisplay(id); // Actualizar UI localmente de inmediato
+        
+        // Enviar broadcast ultra-rápido (~50ms) para apagar la alarma instantáneamente en otras PCs
+        if (realtimeChannel) {
+            realtimeChannel.send({
+                type: 'broadcast',
+                event: 'stop_alarm',
+                payload: { id: id }
+            }).catch(e => console.error('Error enviando broadcast:', e));
+        }
+
+        // Sincronizar el "silencio" en la base de datos de manera definitiva
+        try {
+            await sb.from('timers').update({ 
+                isAcknowledged: true,
+                isCompleted: true,
+                isRunning: false,
+                remainingSeconds: 0
+            }).eq('id', id);
+            
+            // LOG DEL EVENTO (CORRECCIÓN SOLICITADA)
+            logHistoryLocally('ALARMA DETENIDA', timer);
         } catch (e) {
             console.error('Error al silenciar alarma globalmente:', e);
         }
@@ -1065,6 +1137,11 @@ elements.studyTypeInput.addEventListener('input', (e) => {
 
 elements.form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateOperator()) return; // Validación mandatoria
+    
+    // Persistir operador localmente
+    localStorage.setItem('last-operator', document.getElementById('operator-name').value);
+
     const patientName = elements.patientNameInput.value.trim();
     const studyType = elements.studyTypeInput.value.trim();
     const hours = parseInt(elements.hoursInput.value) || 0;
@@ -1280,7 +1357,7 @@ const HistoryManager = {
         this.closeExport();
     },
     downloadCSV(data) {
-        const headers = ["Fecha", "Hora", "Acción", "Paciente", "Estudio"];
+        const headers = ["Fecha", "Hora", "Acción", "Paciente", "Estudio", "Operador"];
         const rows = data.map(ev => {
             const date = new Date(ev.timestamp);
             return [
@@ -1288,7 +1365,8 @@ const HistoryManager = {
                 date.toLocaleTimeString(),
                 ev.action,
                 ev.patientName,
-                ev.studyType
+                ev.studyType,
+                ev.operador || '-'
             ];
         });
 
@@ -1308,7 +1386,7 @@ const HistoryManager = {
         const date = new Date(event.timestamp);
         li.innerHTML = `
             <div class="history-item-header">
-                <span>${event.action}</span>
+                <span>${event.action} ${event.operador ? `<strong style="color:var(--color-primary); margin-left:5px;">(${event.operador})</strong>` : ''}</span>
                 <span>${date.toLocaleDateString()} ${date.toLocaleTimeString()}</span>
             </div>
             <div class="history-item-content">${escapeHtml(event.patientName)}</div>
