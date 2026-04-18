@@ -240,11 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadInitialData();
     
-    // Cargar último operador usado
-    const lastOp = localStorage.getItem('last-operator');
-    if (lastOp && elements.operatorInput) {
-        elements.operatorInput.value = lastOp;
-    }
+    // Cargar último operador usado (deshabilitado por requerimiento)
+    // const lastOp = localStorage.getItem('last-operator');
+    // if (lastOp && elements.operatorInput) {
+    //     elements.operatorInput.value = lastOp;
+    // }
     
     // Sincronización de Reloj Inicial y Periódica (Cada 10 segundos)
     // createDebugOverlay(); // Ocultado a pedido del usuario
@@ -766,7 +766,7 @@ function validateOperator(isModification = false) {
             // Solo actualizamos el panel central si NO es una modificación (o si estaba vacío)
             if (!isModification && op) {
                 op.value = finalName;
-                localStorage.setItem('last-operator', finalName);
+                // localStorage.setItem('last-operator', finalName); // No guardamos para el siguiente timer
             }
             return finalName; // Retornamos el nombre para usarlo en la acción
         } else {
@@ -1140,6 +1140,8 @@ function formatInputValue(input) {
 let currentMode = 'duration';
 
 window.clearForm = () => {
+    const opNav = document.getElementById('operator-name');
+    if (opNav) opNav.value = '';
     elements.patientNameInput.value = '';
     elements.studyTypeInput.value = '';
     elements.hoursInput.value = '00';
@@ -1202,8 +1204,8 @@ elements.form.addEventListener('submit', async (e) => {
     const op = validateOperator(false); // Creación: usar panel central si tiene valor
     if (!op) return; 
     
-    // Persistir operador localmente
-    localStorage.setItem('last-operator', document.getElementById('operator-name').value);
+    // No persistimos el usuario para forzar una carga limpia cada vez
+    // localStorage.setItem('last-operator', document.getElementById('operator-name').value);
 
     const patientName = elements.patientNameInput.value.trim();
     const studyType = elements.studyTypeInput.value.trim();
@@ -1235,11 +1237,16 @@ elements.form.addEventListener('submit', async (e) => {
         const presetMatch = AppState.presets.find(p => p.sigla.toUpperCase() === studyType.toUpperCase());
         const timerColor = presetMatch ? presetMatch.color : '#c20078';
 
+        let finalStudyType = presetMatch ? presetMatch.sigla : studyType;
+        if (currentMode === 'fixed') {
+            finalStudyType += ` (🔔 ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')})`;
+        }
+
         const newTimerData = {
             id: newTimerId,
             laboratorio_id: labId,
             patientName,
-            studyType: presetMatch ? presetMatch.sigla : studyType, // Usar sigla oficial si coincide
+            studyType: finalStudyType,
             totalSeconds,
             remainingSeconds: totalSeconds,
             targetTime: targetTimeIso,
@@ -1256,7 +1263,7 @@ elements.form.addEventListener('submit', async (e) => {
         await sb.from('timers').insert(newTimerData);
 
         // Insert log
-        logHistoryLocally('CREADO', { laboratorio_id: labId, patientName, studyType }, op);
+        logHistoryLocally('CREADO', { laboratorio_id: labId, patientName, studyType: finalStudyType }, op);
 
         elements.patientNameInput.value = '';
         elements.studyTypeInput.value = '';
