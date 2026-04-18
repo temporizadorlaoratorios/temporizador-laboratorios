@@ -947,4 +947,72 @@ header {
 .btn-primary:hover {
     opacity: 0.9;
     transform: translateY(-1px);
+
 }
+
+/* ==================== PANEL DE DIAGNÓSTICO (DEBUG OVERLAY) ==================== */
+.debug-overlay {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    background: rgba(10, 10, 30, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px 15px;
+    z-index: 5000;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+    border-left: 3px solid var(--color-primary);
+    transition: opacity 0.3s;
+}
+
+.debug-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    align-items: center;
+}
+
+.debug-label {
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.debug-value {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.debug-value.master {
+    color: var(--color-primary);
+    text-shadow: 0 0 8px rgba(194, 0, 120, 0.4);
+}
+
+.debug-value.offset {
+    color: #4da6ff;
+}
+
+.debug-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+    background: var(--color-success);
+    box-shadow: 0 0 5px var(--color-success);
+    animation: blink 2s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}

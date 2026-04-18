@@ -247,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Sincronización de Reloj Inicial y Periódica (Cada 10 segundos)
+    createDebugOverlay();
     syncTimeWithServer().then(() => {
         setInterval(syncTimeWithServer, 10000); 
     });
@@ -746,16 +747,77 @@ async function logHistoryLocally(action, timer) {
     }
 }
 
-// Nueva función de validación
+// Nueva función de validación interactiva
 function validateOperator() {
-    const op = document.getElementById('operator-name');
-    if (!op || !op.value.trim()) {
-        op?.classList.add('input-error');
-        op?.focus();
-        setTimeout(() => op?.classList.remove('input-error'), 1000);
-        return false;
+    let op = document.getElementById('operator-name');
+    let operatorName = op ? op.value.trim() : "";
+
+    if (!operatorName) {
+        // Si no hay operador, pedirlo explícitamente por prompt
+        const response = prompt("⚠️ ACCIÓN REQUERIDA: Ingrese su nombre o iniciales de operador para continuar:");
+        
+        if (response && response.trim()) {
+            operatorName = response.trim();
+            if (op) {
+                op.value = operatorName;
+                localStorage.setItem('last-operator', operatorName);
+            }
+        } else {
+            // Si cancela o deja vacío, bloquear acción
+            if (op) {
+                op.classList.add('input-error');
+                op.focus();
+                setTimeout(() => op.classList.remove('input-error'), 1000);
+            }
+            return false;
+        }
+    } else {
+        // Persistir el que ya está escrito por si cambió
+        localStorage.setItem('last-operator', operatorName);
     }
     return true;
+}
+
+// ==================== PANEL DE DIAGNÓSTICO ====================
+function createDebugOverlay() {
+    if (document.getElementById('debug-overlay')) return;
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'debug-overlay';
+    overlay.className = 'debug-overlay';
+    overlay.innerHTML = `
+        <div class="debug-line">
+            <span class="debug-label"><span class="debug-status-dot"></span>Local:</span>
+            <span class="debug-value" id="debug-local-time">--:--:--</span>
+        </div>
+        <div class="debug-line">
+            <span class="debug-label">Master:</span>
+            <span class="debug-value master" id="debug-master-time">--:--:--</span>
+        </div>
+        <div class="debug-line">
+            <span class="debug-label">Offset:</span>
+            <span class="debug-value offset" id="debug-offset">0ms</span>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    // Actualización rápida (cada 1s)
+    setInterval(updateDebugOverlay, 1000);
+}
+
+function updateDebugOverlay() {
+    const local = document.getElementById('debug-local-time');
+    const master = document.getElementById('debug-master-time');
+    const offset = document.getElementById('debug-offset');
+    
+    if (!local || !master || !offset) return;
+    
+    const now = new Date();
+    const masterNow = new Date(Date.now() + AppState.serverTimeOffset);
+    
+    local.textContent = now.toLocaleTimeString();
+    master.textContent = masterNow.toLocaleTimeString();
+    offset.textContent = (AppState.serverTimeOffset > 0 ? '+' : '') + AppState.serverTimeOffset + 'ms';
 }
 
 // MOTOR DEL RELOJ LOCAL PROCESADO EN BACKGROUND POR EL WEB WORKER
@@ -786,8 +848,11 @@ backgroundWorker.onmessage = function(e) {
                     
                     updateTimerDisplay(t.id);
                     
-                    startContinuousAlarm(t.id);
-                    showNotification(t);
+                    // FILTRO ESTRICTO: Solo disparar si llegó a 0 absoluto
+                    if (t.remainingSeconds === 0) {
+                        startContinuousAlarm(t.id);
+                        showNotification(t);
+                    }
                     
                     sb.from('timers').update({ 
                         remainingSeconds: 0, 
@@ -944,6 +1009,7 @@ window.toggleTimer = async (id) => {
         logHistoryLocally('PAUSADO', timer);
     } else {
         // Iniciar - actualizar UI localmente primero
+        syncTimeWithServer(); // Sincronización On-Demand
         const nowReal = Date.now() + AppState.serverTimeOffset;
         const targetTime = new Date(nowReal + (timer.remainingSeconds * 1000)).toISOString();
         timer.isRunning = true;
@@ -980,6 +1046,7 @@ window.resetTimer = async (id) => {
         isAcknowledged: false,
         targetTime: null
     }).eq('id', id);
+    syncTimeWithServer(); // Sincronización On-Demand
     logHistoryLocally('REINICIADO', timer);
 };
 
@@ -1160,6 +1227,7 @@ elements.form.addEventListener('submit', async (e) => {
     } else {
         totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
     }
+    syncTimeWithServer(); // Sincronización On-Demand
 
     if (patientName && studyType && totalSeconds > 0) {
         // USAMOS LA HORA CORREGIDA PARA CALCULAR EL TARGET INICIAL
