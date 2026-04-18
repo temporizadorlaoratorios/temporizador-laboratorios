@@ -361,10 +361,6 @@
     <div id="modal-extra-logo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(8px); z-index:1001;">
         <div class="modal-content" style="width: 380px;">
             <h3 id="extra-logo-modal-title" style="color: #bb88ff; margin-top: 0;">Logo Extra</h3>
-            <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 15px;">
-                Este logo se mostrará arriba a la derecha en el temporizador de este laboratorio.<br>
-                Si no se configura, se usará el logo extra global (defecto: ícono del temporizador).
-            </p>
             <div style="margin: 15px 0; text-align: center;">
                 <img id="extra-logo-preview" src="" alt="Vista previa" style="display:none; max-width: 120px; max-height: 120px; border-radius: 8px; border: 1px solid rgba(150,80,220,0.4); margin-bottom: 10px;">
             </div>
@@ -372,10 +368,12 @@
                 <label class="form-label">Seleccionar imagen (máx 1MB):</label>
                 <input type="file" id="extra-logo-file-input" accept="image/*" class="form-input-compact" style="width: 100%; margin-top: 5px; padding: 8px;">
             </div>
-            <div style="display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap;">
-                <button id="extra-logo-save-btn" class="submit-btn-compact" style="flex: 1; padding: 10px; min-width: 100px;">💾 Guardar</button>
-                <button id="extra-logo-delete-btn" class="control-btn-compact control-btn-danger-compact" style="flex: 1; padding: 10px; min-width: 100px;">🗑 Restaurar</button>
-                <button onclick="closeExtraLogoModal()" class="control-btn-compact control-btn-secondary-compact" style="flex: 1; padding: 10px; min-width: 80px;">Cancelar</button>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px;">
+                <button id="extra-logo-save-btn" class="submit-btn-compact" style="padding: 10px;">💾 Guardar</button>
+                <div style="display: flex; gap: 8px;">
+                    <button id="extra-logo-delete-btn" class="control-btn-compact control-btn-danger-compact" style="flex: 1; padding: 10px;">🗑 Restaurar defecto</button>
+                    <button onclick="closeExtraLogoModal()" class="control-btn-compact control-btn-secondary-compact" style="flex: 1; padding: 10px;">Cancelar</button>
+                </div>
             </div>
         </div>
     </div>

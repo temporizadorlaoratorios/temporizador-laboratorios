@@ -238,28 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Cargar Logo Extra Global desde Supabase (primero busca el específico del lab, luego el global)
+    // Cargar Logo Extra Global desde Supabase
     async function initExtraBranding() {
         try {
+            const { data } = await sb.from('laboratorios').select('logo').eq('id', 'super-admin-extra-logo').single();
             const logoExtra = document.getElementById('app-extra-logo');
-            if (!logoExtra) return;
-
-            // 1. Buscar logo extra específico de este lab
-            const labSpecificId = `extra-logo-${labId}`;
-            const { data: labSpecific } = await sb.from('laboratorios').select('logo').eq('id', labSpecificId).single();
-            
-            if (labSpecific && labSpecific.logo) {
-                logoExtra.src = labSpecific.logo;
-                return;
+            if (logoExtra) {
+                logoExtra.src = (data && data.logo) ? data.logo : 'icono.ico';
             }
-
-            // 2. Fallback: logo extra global configurado por el super admin
-            const { data: globalExtra } = await sb.from('laboratorios').select('logo').eq('id', 'super-admin-extra-logo').single();
-            logoExtra.src = (globalExtra && globalExtra.logo) ? globalExtra.logo : 'icono.ico';
         } catch (e) {
-            // Si no existe ninguno, mantener el defecto
-            const logoExtra = document.getElementById('app-extra-logo');
-            if (logoExtra) logoExtra.src = 'icono.ico';
+            // Si no existe el registro, mantener el defecto
         }
     }
     initExtraBranding();
