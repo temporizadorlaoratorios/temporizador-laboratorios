@@ -756,8 +756,8 @@ function validateOperator(isModification = false) {
     // Si es creación, solo pedir prompt si el panel central está vacío.
     if (isModification || !operatorName) {
         const msg = isModification 
-            ? "⚠️ MODIFICACIÓN: Ingrese su nombre o iniciales de operador:" 
-            : "⚠️ ACCIÓN REQUERIDA: Ingrese su nombre o iniciales de operador para continuar:";
+            ? "⚠️ MODIFICACIÓN: Ingrese su nombre o iniciales de usuario:" 
+            : "⚠️ ACCIÓN REQUERIDA: Ingrese su nombre o iniciales de usuario para continuar:";
             
         const response = prompt(msg);
         
