@@ -722,14 +722,14 @@ function updatePresetsDatalist() {
     });
 }
 
-async function logHistoryLocally(action, timer) {
-    const operator = document.getElementById('operator-name')?.value.trim() || 'SISTEMA';
+async function logHistoryLocally(action, timer, forcedOperator = null) {
+    const operator = forcedOperator || document.getElementById('operator-name')?.value.trim() || 'SISTEMA';
     const historyEvent = {
         id: Date.now().toString(),
-        laboratorio_id: timer.laboratorio_id,
+        laboratorio_id: timer.laboratorio_id || labId,
         action: action,
-        patientName: timer.patientName,
-        studyType: timer.studyType,
+        patientName: timer.patientName || 'N/A',
+        studyType: timer.studyType || 'N/A',
         operador: operator,
         timestamp: new Date().toISOString()
     };
@@ -748,34 +748,39 @@ async function logHistoryLocally(action, timer) {
 }
 
 // Nueva función de validación interactiva
-function validateOperator() {
+function validateOperator(isModification = false) {
     let op = document.getElementById('operator-name');
     let operatorName = op ? op.value.trim() : "";
 
-    if (!operatorName) {
-        // Si no hay operador, pedirlo explícitamente por prompt
-        const response = prompt("⚠️ ACCIÓN REQUERIDA: Ingrese su nombre o iniciales de operador para continuar:");
+    // REGLA: Si es modificación, SIEMPRE pedir prompt ignorando el panel central.
+    // Si es creación, solo pedir prompt si el panel central está vacío.
+    if (isModification || !operatorName) {
+        const msg = isModification 
+            ? "⚠️ MODIFICACIÓN: Ingrese su nombre o iniciales de operador:" 
+            : "⚠️ ACCIÓN REQUERIDA: Ingrese su nombre o iniciales de operador para continuar:";
+            
+        const response = prompt(msg);
         
         if (response && response.trim()) {
-            operatorName = response.trim();
-            if (op) {
-                op.value = operatorName;
-                localStorage.setItem('last-operator', operatorName);
+            const finalName = response.trim();
+            // Solo actualizamos el panel central si NO es una modificación (o si estaba vacío)
+            if (!isModification && op) {
+                op.value = finalName;
+                localStorage.setItem('last-operator', finalName);
             }
+            return finalName; // Retornamos el nombre para usarlo en la acción
         } else {
-            // Si cancela o deja vacío, bloquear acción
-            if (op) {
+            // Si cancela o deja vacío
+            if (!isModification && op && !operatorName) {
                 op.classList.add('input-error');
                 op.focus();
                 setTimeout(() => op.classList.remove('input-error'), 1000);
             }
             return false;
         }
-    } else {
-        // Persistir el que ya está escrito por si cambió
-        localStorage.setItem('last-operator', operatorName);
     }
-    return true;
+    
+    return operatorName; // Retornamos el nombre del panel central (para creación)
 }
 
 // ==================== PANEL DE DIAGNÓSTICO ====================
@@ -990,7 +995,9 @@ function updateTimerDisplay(timerId) {
 
 // ==================== ACCIONES DB MANUALES ====================
 window.toggleTimer = async (id) => {
-    if (!validateOperator()) return; // Validación mandatoria
+    const op = validateOperator(true); // Siempre pedir en modificaciones
+    if (!op) return;
+    
     const timer = AppState.timers.find(t => t.id === id);
     if (!timer) return;
 
@@ -1006,7 +1013,7 @@ window.toggleTimer = async (id) => {
             remainingSeconds: timer.remainingSeconds,
             targetTime: null
         }).eq('id', id);
-        logHistoryLocally('PAUSADO', timer);
+        logHistoryLocally('PAUSADO', timer, op);
     } else {
         // Iniciar - actualizar UI localmente primero
         syncTimeWithServer(); // Sincronización On-Demand
@@ -1021,12 +1028,14 @@ window.toggleTimer = async (id) => {
             isPaused: false,
             targetTime: targetTime
         }).eq('id', id);
-        logHistoryLocally('INICIADO', timer);
+        logHistoryLocally('INICIADO', timer, op);
     }
 };
 
 window.resetTimer = async (id) => {
-    if (!validateOperator()) return; // Validación mandatoria
+    const op = validateOperator(true); // Siempre pedir en modificaciones
+    if (!op) return;
+    
     const timer = AppState.timers.find(t => t.id === id);
     if (!timer) return;
     stopAlarm(id);
@@ -1047,11 +1056,13 @@ window.resetTimer = async (id) => {
         targetTime: null
     }).eq('id', id);
     syncTimeWithServer(); // Sincronización On-Demand
-    logHistoryLocally('REINICIADO', timer);
+    logHistoryLocally('REINICIADO', timer, op);
 };
 
 window.deleteTimer = async (id) => {
-    if (!validateOperator()) return; // Validación mandatoria
+    const op = validateOperator(true); // Siempre pedir en modificaciones
+    if (!op) return;
+    
     if (confirm('¿Eliminar este temporizador?')) {
         const timer = AppState.timers.find(t => t.id === id);
         stopAlarm(id);
@@ -1059,11 +1070,14 @@ window.deleteTimer = async (id) => {
         AppState.timers = AppState.timers.filter(t => t.id !== id);
         renderTimers();
         await sb.from('timers').delete().eq('id', id);
-        if(timer) logHistoryLocally('ELIMINADO', timer);
+        if(timer) logHistoryLocally('ELIMINADO', timer, op);
     }
 };
 
 window.handleStopAlarm = async (id) => {
+    const op = validateOperator(true); // Siempre pedir en modificaciones
+    if (!op) return;
+    
     stopAlarm(id);
     const timer = AppState.timers.find(t => t.id == id);
     if (timer) {
@@ -1089,41 +1103,7 @@ window.handleStopAlarm = async (id) => {
             }).eq('id', id);
             
             // LOG DEL EVENTO (CORRECCIÓN SOLICITADA)
-            logHistoryLocally('ALARMA DETENIDA', timer);
-        } catch (e) {
-            console.error('Error al silenciar alarma globalmente:', e);
-        }
-    }
-};
-
-window.handleStopAlarm = async (id) => {
-    if (!validateOperator()) return; // Validación mandatoria
-    stopAlarm(id);
-    const timer = AppState.timers.find(t => t.id == id);
-    if (timer) {
-        timer.isAcknowledged = true;
-        updateTimerDisplay(id); // Actualizar UI localmente de inmediato
-        
-        // Enviar broadcast ultra-rápido (~50ms) para apagar la alarma instantáneamente en otras PCs
-        if (realtimeChannel) {
-            realtimeChannel.send({
-                type: 'broadcast',
-                event: 'stop_alarm',
-                payload: { id: id }
-            }).catch(e => console.error('Error enviando broadcast:', e));
-        }
-
-        // Sincronizar el "silencio" en la base de datos de manera definitiva
-        try {
-            await sb.from('timers').update({ 
-                isAcknowledged: true,
-                isCompleted: true,
-                isRunning: false,
-                remainingSeconds: 0
-            }).eq('id', id);
-            
-            // LOG DEL EVENTO (CORRECCIÓN SOLICITADA)
-            logHistoryLocally('ALARMA DETENIDA', timer);
+            logHistoryLocally('ALARMA DETENIDA', timer, op);
         } catch (e) {
             console.error('Error al silenciar alarma globalmente:', e);
         }
@@ -1204,7 +1184,8 @@ elements.studyTypeInput.addEventListener('input', (e) => {
 
 elements.form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!validateOperator()) return; // Validación mandatoria
+    const op = validateOperator(false); // Creación: usar panel central si tiene valor
+    if (!op) return; 
     
     // Persistir operador localmente
     localStorage.setItem('last-operator', document.getElementById('operator-name').value);
@@ -1260,7 +1241,7 @@ elements.form.addEventListener('submit', async (e) => {
         await sb.from('timers').insert(newTimerData);
 
         // Insert log
-        logHistoryLocally('CREADO', { laboratorio_id: labId, patientName, studyType });
+        logHistoryLocally('CREADO', { laboratorio_id: labId, patientName, studyType }, op);
 
         elements.patientNameInput.value = '';
         elements.studyTypeInput.value = '';
