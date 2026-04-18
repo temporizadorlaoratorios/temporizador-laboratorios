@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Sincronización de Reloj Inicial y Periódica (Cada 10 segundos)
-    createDebugOverlay();
+    // createDebugOverlay(); // Ocultado a pedido del usuario
     syncTimeWithServer().then(() => {
         setInterval(syncTimeWithServer, 10000); 
     });
@@ -828,6 +828,7 @@ function updateDebugOverlay() {
 // MOTOR DEL RELOJ LOCAL PROCESADO EN BACKGROUND POR EL WEB WORKER
 backgroundWorker.onmessage = function(e) {
     if (e.data.type === 'beep') {
+        if (!AppState.activeAlarms[e.data.id]) return; // Prevenir que beeps encolados suenen si la alarma ya fue detenida
         playBeepTone();
         // Fallback: mostrar notificación de respaldo cada vez que hace beep (pero limitada para no hacer spam)
         // Solo las mostramos en la PC receptora si no está en foco y tiene el tab en background
@@ -1075,39 +1076,53 @@ window.deleteTimer = async (id) => {
 };
 
 window.handleStopAlarm = async (id) => {
-    const op = validateOperator(true); // Siempre pedir en modificaciones
-    if (!op) return;
-    
+    // 1. Detener el sonido INMEDIATAMENTE para que no siga sonando durante el prompt
     stopAlarm(id);
     const timer = AppState.timers.find(t => t.id == id);
     if (timer) {
         timer.isAcknowledged = true;
-        updateTimerDisplay(id); // Actualizar UI localmente de inmediato
-        
-        // Enviar broadcast ultra-rápido (~50ms) para apagar la alarma instantáneamente en otras PCs
-        if (realtimeChannel) {
-            realtimeChannel.send({
-                type: 'broadcast',
-                event: 'stop_alarm',
-                payload: { id: id }
-            }).catch(e => console.error('Error enviando broadcast:', e));
-        }
-
-        // Sincronizar el "silencio" en la base de datos de manera definitiva
-        try {
-            await sb.from('timers').update({ 
-                isAcknowledged: true,
-                isCompleted: true,
-                isRunning: false,
-                remainingSeconds: 0
-            }).eq('id', id);
-            
-            // LOG DEL EVENTO (CORRECCIÓN SOLICITADA)
-            logHistoryLocally('ALARMA DETENIDA', timer, op);
-        } catch (e) {
-            console.error('Error al silenciar alarma globalmente:', e);
-        }
+        updateTimerDisplay(id); // Actualizar UI localmente de inmediato (desaparece el botón)
     }
+
+    // Usar setTimeout para que el navegador procese el cese del audio antes de bloquear el hilo con prompt()
+    setTimeout(async () => {
+        const op = validateOperator(true); // Siempre pedir en modificaciones
+        if (!op) {
+            // Si cancela, reanudamos la alarma
+            if (timer) {
+                timer.isAcknowledged = false;
+                startContinuousAlarm(id);
+                updateTimerDisplay(id);
+            }
+            return;
+        }
+        
+        if (timer) {
+            // Enviar broadcast ultra-rápido (~50ms) para apagar la alarma instantáneamente en otras PCs
+            if (realtimeChannel) {
+                realtimeChannel.send({
+                    type: 'broadcast',
+                    event: 'stop_alarm',
+                    payload: { id: id }
+                }).catch(e => console.error('Error enviando broadcast:', e));
+            }
+
+            // Sincronizar el "silencio" en la base de datos de manera definitiva
+            try {
+                await sb.from('timers').update({ 
+                    isAcknowledged: true,
+                    isCompleted: true,
+                    isRunning: false,
+                    remainingSeconds: 0
+                }).eq('id', id);
+                
+                // LOG DEL EVENTO (CORRECCIÓN SOLICITADA)
+                logHistoryLocally('ALARMA DETENIDA', timer, op);
+            } catch (e) {
+                console.error('Error al silenciar alarma globalmente:', e);
+            }
+        }
+    }, 50);
 };
 
 // ==================== FORMULARIO ====================
