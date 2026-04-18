@@ -1,0 +1,9 @@
+[
+  {
+    "id": "lab-1",
+    "nombre": "Prueba 1",
+    "max_pcs": 3,
+    "activo": true,
+    "logo": "logo-lab-1.png"
+  }
+]

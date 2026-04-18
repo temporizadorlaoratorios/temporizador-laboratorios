@@ -220,7 +220,17 @@
                     <button onclick="closeLogoMenu()" class="logo-menu-btn cancel-btn">Cancelar</button>
                 </div>
             </div>
+            <!-- LOGO EXTRA GLOBAL -->
+            <div class="logo-container interactive-logo" id="logo-extra-container" onclick="handleExtraLogoClick(event)" style="position: absolute; right: 20px; top: 20px; width: 60px; height: 60px; padding: 0; background: none;">
+                <img src="icono.ico" alt="Logo Extra" id="app-extra-logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">
+                <div id="logo-extra-options-menu" class="logo-options-menu" onclick="event.stopPropagation()">
+                    <button onclick="document.getElementById('logo-extra-upload').click(); closeExtraLogoMenu();" class="logo-menu-btn">Cambiar Logo Extra</button>
+                    <button onclick="deleteExtraLogo(); closeExtraLogoMenu();" class="logo-menu-btn delete-btn">Restaurar Defecto</button>
+                    <button onclick="closeExtraLogoMenu()" class="logo-menu-btn cancel-btn">Cancelar</button>
+                </div>
+            </div>
             <input type="file" id="logo-upload" accept="image/*" style="display: none;">
+            <input type="file" id="logo-extra-upload" accept="image/*" style="display: none;">
             <h1 class="app-title-text" style="font-size: 2.2rem;">Panel de Control Global</h1>
             <div class="admin-actions">
                 <button onclick="window.open('index.html', '_blank')" class="history-btn-blue"> Abrir Temporizador </button>
@@ -427,8 +437,10 @@
             const superAdmin = perfiles ? perfiles.find(p => p.rol === 'super_admin') : null;
             if (superAdmin) currentAdminProfile = superAdmin;
 
+            const validLabs = allLabs.filter(l => l.id !== 'super-admin' && l.id !== 'super-admin-extra-logo');
+
             const stats = {
-                labs: allLabs.map(l => {
+                labs: validLabs.map(l => {
                     const perfil = allPerfiles.find(p => p.laboratorio_id === l.id);
                     const labTimers = (timersActivos || []).filter(t => t.laboratorio_id === l.id);
                     return {
@@ -638,8 +650,75 @@
             reader.readAsDataURL(file);
         });
 
+
+        // ==================== GESTIÓN LOGO EXTRA GLOBAL ====================
+        const extraLabId = 'super-admin-extra-logo';
+
+        async function initExtraBranding() {
+            const { data: labData } = await sb.from('laboratorios').select('logo').eq('id', extraLabId).single();
+            const logoImg = document.getElementById('app-extra-logo');
+            
+            if (labData && labData.logo) {
+                logoImg.src = labData.logo;
+            } else {
+                logoImg.src = 'icono.ico';
+            }
+        }
+
+        function handleExtraLogoClick(event) {
+            event.stopPropagation();
+            const logoMenu = document.getElementById('logo-extra-options-menu');
+            logoMenu.style.display = (logoMenu.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function closeExtraLogoMenu() {
+            document.getElementById('logo-extra-options-menu').style.display = 'none';
+        }
+
+        async function deleteExtraLogo() {
+            if (!confirm('¿Seguro que deseas restaurar el logo extra por defecto?')) return;
+            try {
+                await sb.from('laboratorios').update({ logo: null }).eq('id', extraLabId);
+                initExtraBranding();
+                alert('Logo extra restaurado al original');
+            } catch (err) {
+                alert('Error al restaurar logo extra');
+            }
+        }
+
+        document.getElementById('logo-extra-upload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 1024 * 1024) {
+                alert("La imagen es demasiado grande (máx 1MB)");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const base64Data = event.target.result;
+                try {
+                    const { data: existing } = await sb.from('laboratorios').select('id').eq('id', extraLabId).single();
+                    if (!existing) {
+                        await sb.from('laboratorios').insert({ id: extraLabId, nombre: 'Logo Extra Global', activo: true, logo: base64Data });
+                    } else {
+                        await sb.from('laboratorios').update({ logo: base64Data }).eq('id', extraLabId);
+                    }
+                    initExtraBranding();
+                    alert('Logo extra actualizado correctamente');
+                } catch (err) {
+                    console.error('Error al subir logo extra:', err);
+                    alert('Error al guardar el logo extra');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
         // Cerrar menú al hacer clic fuera
-        document.addEventListener('click', () => closeLogoMenu());
+        document.addEventListener('click', () => {
+            closeLogoMenu();
+            if(window.closeExtraLogoMenu) closeExtraLogoMenu();
+        });
 
         // ==================== CRUD LABORATORIOS (SUPABASE) ====================
         document.getElementById('lab-form').onsubmit = async (e) => {
@@ -715,6 +794,7 @@
 
         // ==================== INICIO ====================
         initLabBranding();
+        initExtraBranding();
         refreshData();
         // Refrescar cada 30 segundos
         setInterval(refreshData, 30000);

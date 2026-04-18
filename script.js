@@ -238,6 +238,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Cargar Logo Extra Global desde Supabase
+    async function initExtraBranding() {
+        try {
+            const { data } = await sb.from('laboratorios').select('logo').eq('id', 'super-admin-extra-logo').single();
+            const logoExtra = document.getElementById('app-extra-logo');
+            if (logoExtra) {
+                logoExtra.src = (data && data.logo) ? data.logo : 'icono.ico';
+            }
+        } catch (e) {
+            // Si no existe el registro, mantener el defecto
+        }
+    }
+    initExtraBranding();
+
     loadInitialData();
     
     // Cargar último operador usado (deshabilitado por requerimiento)

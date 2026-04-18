@@ -1,0 +1,16 @@
+[
+  {
+    "id": "admin-1",
+    "email": "eferro888@gmail.com",
+    "password": "Tenis888",
+    "rol": "super_admin",
+    "laboratorio_id": "super-admin"
+  },
+  {
+    "id": "user-1",
+    "email": "prueba@laboratorio.com",
+    "password": "123",
+    "rol": "user",
+    "laboratorio_id": "lab-1"
+  }
+]
