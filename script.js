@@ -1178,6 +1178,11 @@ window.toggleTimerMode = () => {
     }
 };
 
+// Limpiar el input al clickear para que el datalist muestre todas las sugerencias sin filtrar
+elements.studyTypeInput.addEventListener('click', function(e) {
+    this.value = '';
+});
+
 elements.studyTypeInput.addEventListener('input', (e) => {
     const val = e.target.value.toUpperCase().trim();
     // Buscar en presets por sigla o descripción
@@ -1262,8 +1267,10 @@ elements.form.addEventListener('submit', async (e) => {
 
         await sb.from('timers').insert(newTimerData);
 
-        // Insert log
         logHistoryLocally('CREADO', { laboratorio_id: labId, patientName, studyType: finalStudyType }, op);
+
+        const opNav = document.getElementById('operator-name');
+        if (opNav) opNav.value = '';
 
         elements.patientNameInput.value = '';
         elements.studyTypeInput.value = '';
