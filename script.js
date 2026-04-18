@@ -1471,16 +1471,38 @@ const HistoryManager = {
         this.closeExport();
     },
     downloadCSV(data) {
-        const headers = ["Fecha", "Hora", "Acción", "Paciente", "Estudio", "Operador"];
+        const justLeft = (val) => `="${(val || '').toString().replace(/"/g, '""')}"`;
+        const headers = ["Fecha", "Hora", "Acción", "Paciente", "Estudio", "Hora Fija", "Cuenta Regresiva", "Operador"].map(justLeft);
         const rows = data.map(ev => {
             const date = new Date(ev.timestamp);
+            let rawStudy = ev.studyType || '';
+            let estudioPuro = rawStudy.toUpperCase();
+            let horaFija = '';
+            let cuentaRegresiva = '';
+
+            const campanaMatch = rawStudy.match(/(.*?)\s*\(\s*🔔\s*([\d:]+)\s*\)/);
+            if (campanaMatch) {
+                estudioPuro = campanaMatch[1].trim().toUpperCase();
+                horaFija = campanaMatch[2].trim();
+            } else {
+                const preset = AppState.presets.find(p => p.sigla.toUpperCase() === rawStudy.toUpperCase());
+                if (preset) {
+                    const h = String(preset.horas || 0).padStart(2, '0');
+                    const m = String(preset.minutos || 0).padStart(2, '0');
+                    const s = String(preset.segundos || 0).padStart(2, '0');
+                    cuentaRegresiva = (h !== '00' ? h + ':' : '') + m + ':' + s; 
+                }
+            }
+
             return [
-                date.toLocaleDateString(),
-                date.toLocaleTimeString(),
-                ev.action,
-                ev.patientName,
-                ev.studyType,
-                ev.operador || '-'
+                justLeft(date.toLocaleDateString()),
+                justLeft(date.toLocaleTimeString()),
+                justLeft(ev.action),
+                justLeft(ev.patientName),
+                justLeft(estudioPuro),
+                justLeft(horaFija),
+                justLeft(cuentaRegresiva),
+                justLeft(ev.operador || '-')
             ];
         });
 
