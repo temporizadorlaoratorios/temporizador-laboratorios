@@ -357,6 +357,29 @@
         </div>
     </div>
 
+    <!-- Modal Logo Extra por Laboratorio -->
+    <div id="modal-extra-logo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(8px); z-index:1001;">
+        <div class="modal-content" style="width: 380px;">
+            <h3 id="extra-logo-modal-title" style="color: #bb88ff; margin-top: 0;">Logo Extra</h3>
+            <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 15px;">
+                Este logo se mostrará arriba a la derecha en el temporizador de este laboratorio.<br>
+                Si no se configura, se usará el logo extra global (defecto: ícono del temporizador).
+            </p>
+            <div style="margin: 15px 0; text-align: center;">
+                <img id="extra-logo-preview" src="" alt="Vista previa" style="display:none; max-width: 120px; max-height: 120px; border-radius: 8px; border: 1px solid rgba(150,80,220,0.4); margin-bottom: 10px;">
+            </div>
+            <div style="margin: 15px 0;">
+                <label class="form-label">Seleccionar imagen (máx 1MB):</label>
+                <input type="file" id="extra-logo-file-input" accept="image/*" class="form-input-compact" style="width: 100%; margin-top: 5px; padding: 8px;">
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap;">
+                <button id="extra-logo-save-btn" class="submit-btn-compact" style="flex: 1; padding: 10px; min-width: 100px;">💾 Guardar</button>
+                <button id="extra-logo-delete-btn" class="control-btn-compact control-btn-danger-compact" style="flex: 1; padding: 10px; min-width: 100px;">🗑 Restaurar</button>
+                <button onclick="closeExtraLogoModal()" class="control-btn-compact control-btn-secondary-compact" style="flex: 1; padding: 10px; min-width: 80px;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==================== EXCLUSIVIDAD PWA vs NAVEGADOR ====================
         const IS_PWA = window.matchMedia('(display-mode: standalone)').matches 
@@ -482,12 +505,13 @@
                     <td><span class="badge ${lab.activo ? 'badge-online' : 'badge-offline'}">${lab.activo ? 'ACTIVO' : 'INACTIVO'}</span></td>
                     <td>${lab.max_pcs}</td>
                     <td>
-                        <div style="display: flex; gap: 5px;">
+                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                             <button class="control-btn-compact control-btn-secondary-compact" onclick='openEditModal(${JSON.stringify(lab).replace(/'/g, "&#39;")})'>Editar</button>
                             <button class="control-btn-compact ${lab.activo ? 'control-btn-danger-compact' : 'history-btn-blue'}" onclick="toggleStatus('${lab.id}', ${lab.activo})">
                                 ${lab.activo ? 'Desactivar' : 'Activar'}
                             </button>
                             <button class="control-btn-compact control-btn-danger-compact" onclick="deleteLab('${lab.id}', '${lab.nombre}')">Eliminar</button>
+                            <button class="control-btn-compact" style="background: rgba(80,40,120,0.3); border-color: rgba(150,80,220,0.5); color: #bb88ff; font-size: 0.75rem;" onclick="openExtraLogoModal('${lab.id}', '${lab.nombre}')">🖼️ Logo Extra</button>
                         </div>
                     </td>
                 `;
@@ -719,6 +743,78 @@
             closeLogoMenu();
             if(window.closeExtraLogoMenu) closeExtraLogoMenu();
         });
+
+        // ==================== LOGO EXTRA POR LABORATORIO ====================
+        let currentExtraLogoLabId = null;
+
+        function openExtraLogoModal(labId, labNombre) {
+            currentExtraLogoLabId = labId;
+            document.getElementById('extra-logo-modal-title').textContent = `Logo Extra: ${labNombre}`;
+            document.getElementById('modal-extra-logo').style.display = 'flex';
+        }
+
+        function closeExtraLogoModal() {
+            document.getElementById('modal-extra-logo').style.display = 'none';
+            currentExtraLogoLabId = null;
+            document.getElementById('extra-logo-file-input').value = '';
+            document.getElementById('extra-logo-preview').src = '';
+            document.getElementById('extra-logo-preview').style.display = 'none';
+        }
+
+        document.getElementById('extra-logo-file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 1024 * 1024) {
+                alert('La imagen es demasiado grande (máx 1MB)');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const preview = document.getElementById('extra-logo-preview');
+                preview.src = ev.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('extra-logo-save-btn').onclick = async () => {
+            if (!currentExtraLogoLabId) return;
+            const file = document.getElementById('extra-logo-file-input').files[0];
+            if (!file) { alert('Seleccioná una imagen primero'); return; }
+
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const base64Data = ev.target.result;
+                const virtualId = `extra-logo-${currentExtraLogoLabId}`;
+                try {
+                    const { data: existing } = await sb.from('laboratorios').select('id').eq('id', virtualId).single();
+                    if (!existing) {
+                        await sb.from('laboratorios').insert({ id: virtualId, nombre: `Logo Extra ${currentExtraLogoLabId}`, activo: true, logo: base64Data });
+                    } else {
+                        await sb.from('laboratorios').update({ logo: base64Data }).eq('id', virtualId);
+                    }
+                    alert('Logo Extra guardado correctamente ✅');
+                    closeExtraLogoModal();
+                } catch (err) {
+                    console.error(err);
+                    alert('Error al guardar el logo extra');
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        document.getElementById('extra-logo-delete-btn').onclick = async () => {
+            if (!currentExtraLogoLabId) return;
+            if (!confirm('¿Restaurar el Logo Extra de este lab al defecto global?')) return;
+            const virtualId = `extra-logo-${currentExtraLogoLabId}`;
+            try {
+                await sb.from('laboratorios').update({ logo: null }).eq('id', virtualId);
+                alert('Logo Extra restaurado al defecto');
+                closeExtraLogoModal();
+            } catch (err) {
+                alert('Error al restaurar');
+            }
+        };
 
         // ==================== CRUD LABORATORIOS (SUPABASE) ====================
         document.getElementById('lab-form').onsubmit = async (e) => {
