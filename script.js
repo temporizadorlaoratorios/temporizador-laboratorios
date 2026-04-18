@@ -1484,8 +1484,8 @@ const HistoryManager = {
             ];
         });
 
-        let csvContent = headers.join(",") + "\n" + rows.map(r => r.join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        let csvContent = headers.join(";") + "\n" + rows.map(r => r.join(";")).join("\n");
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
