@@ -1178,13 +1178,6 @@ window.toggleTimerMode = () => {
     }
 };
 
-// Limpiar el input al recibir foco para que el datalist muestre todas las sugerencias sin filtrar
-elements.studyTypeInput.addEventListener('focus', function(e) {
-    this.value = '';
-});
-elements.studyTypeInput.addEventListener('click', function(e) {
-    this.value = '';
-});
 
 elements.studyTypeInput.addEventListener('input', (e) => {
     const val = e.target.value.toUpperCase().trim();
