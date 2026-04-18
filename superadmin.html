@@ -458,7 +458,11 @@
             const superAdmin = perfiles ? perfiles.find(p => p.rol === 'super_admin') : null;
             if (superAdmin) currentAdminProfile = superAdmin;
 
-            const validLabs = allLabs.filter(l => l.id !== 'super-admin' && l.id !== 'super-admin-extra-logo');
+            const validLabs = allLabs.filter(l => 
+                l.id !== 'super-admin' && 
+                l.id !== 'super-admin-extra-logo' &&
+                !l.id.startsWith('extra-logo-')
+            );
 
             const stats = {
                 labs: validLabs.map(l => {

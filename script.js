@@ -238,16 +238,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Cargar Logo Extra Global desde Supabase
+    // Cargar Logo Extra desde Supabase (primero el específico del lab, luego el global)
     async function initExtraBranding() {
+        const logoExtra = document.getElementById('app-extra-logo');
+        if (!logoExtra) return;
         try {
-            const { data } = await sb.from('laboratorios').select('logo').eq('id', 'super-admin-extra-logo').single();
-            const logoExtra = document.getElementById('app-extra-logo');
-            if (logoExtra) {
-                logoExtra.src = (data && data.logo) ? data.logo : 'icono.ico';
+            // 1. Buscar logo extra específico de este laboratorio
+            const perLabId = `extra-logo-${labId}`;
+            const { data: perLabData } = await sb.from('laboratorios').select('logo').eq('id', perLabId).single();
+            if (perLabData && perLabData.logo) {
+                logoExtra.src = perLabData.logo;
+                return;
             }
+            // 2. Fallback: buscar logo extra global del super admin
+            const { data: globalData } = await sb.from('laboratorios').select('logo').eq('id', 'super-admin-extra-logo').single();
+            logoExtra.src = (globalData && globalData.logo) ? globalData.logo : 'icono.ico';
         } catch (e) {
-            // Si no existe el registro, mantener el defecto
+            logoExtra.src = 'icono.ico';
         }
     }
     initExtraBranding();
