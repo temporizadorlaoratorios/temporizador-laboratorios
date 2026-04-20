@@ -317,10 +317,21 @@ document.addEventListener('visibilitychange', () => {
 const workerCode = `
     let interval;
     let alarms = {}; // Almacena los contadores para cada alarma activa
+    let ticks = 0;
     self.onmessage = function(e) {
         if (e.data.type === 'start_engine') {
             interval = setInterval(() => { 
                 self.postMessage({ type: 'tick' }); 
+                
+                ticks++;
+                if (ticks >= 50) { // 5 segundos (50 * 100ms)
+                    ticks = 0;
+                    if (Object.keys(alarms).length > 0) {
+                        // Solicitar validación a la base de datos por si el websocket está suspendido
+                        self.postMessage({ type: 'sync_check' });
+                    }
+                }
+
                 // Alertas de sonido (cada 1.5s = 15 ticks)
                 Object.keys(alarms).forEach(id => {
                     alarms[id]++;
@@ -858,6 +869,38 @@ backgroundWorker.onmessage = function(e) {
             if (t && Math.random() < 0.1) { // 10% de probabilidad por tick (cada 15s) para no floodear el SO
                 // Opcional: showNotification(t); 
             }
+        }
+    } else if (e.data.type === 'sync_check') {
+        const activeIds = Object.keys(AppState.activeAlarms);
+        if (activeIds.length > 0) {
+            sb.from('timers').select('id, isAcknowledged, isCompleted, isRunning')
+                .in('id', activeIds)
+                .then(({ data, error }) => {
+                    if (!error && data) {
+                        data.forEach(t => {
+                            if (t.isAcknowledged === true || t.isRunning === true || t.isCompleted === false) {
+                                // La alarma ya fue detenida o reiniciada remotamente
+                                stopAlarm(t.id);
+                                const localTimer = AppState.timers.find(local => local.id === t.id);
+                                if (localTimer) {
+                                    localTimer.isAcknowledged = t.isAcknowledged;
+                                    localTimer.isRunning = t.isRunning;
+                                    localTimer.isCompleted = t.isCompleted;
+                                    updateTimerDisplay(t.id);
+                                }
+                            }
+                        });
+                        
+                        // Si un ID ya no se devolvió (fue borrado de la DB), lo paramos.
+                        activeIds.forEach(id => {
+                            if (!data.find(d => d.id === id)) {
+                                stopAlarm(id);
+                                AppState.timers = AppState.timers.filter(l => l.id !== id);
+                                renderTimers();
+                            }
+                        });
+                    }
+                }).catch(err => console.log('Silenced sync check error', err));
         }
     } else if (e.data.type === 'tick') {
         const now = Date.now() + AppState.serverTimeOffset;
