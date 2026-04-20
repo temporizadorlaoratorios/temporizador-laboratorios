@@ -510,6 +510,9 @@ function stopAlarm(timerId) {
 }
 
 function showNotification(timer) {
+    if (timer.hasNotifiedLocally) return;
+    timer.hasNotifiedLocally = true;
+    
     if ('Notification' in window && Notification.permission === 'granted') {
         const options = {
             body: `${timer.patientName} - ${timer.studyType} completado.`,
@@ -1140,53 +1143,43 @@ window.deleteTimer = async (id) => {
 };
 
 window.handleStopAlarm = async (id) => {
-    // 1. Detener el sonido INMEDIATAMENTE para que no siga sonando durante el prompt
-    stopAlarm(id);
     const timer = AppState.timers.find(t => t.id == id);
-    if (timer) {
-        timer.isAcknowledged = true;
-        updateTimerDisplay(id); // Actualizar UI localmente de inmediato (desaparece el botón)
+    if (!timer) return;
+
+    // Validar el operador ANTES de detener el sonido
+    const op = validateOperator(true); 
+    if (!op) {
+        // El usuario canceló o dejó vacío, la alarma SIGUE sonando
+        return;
+    }
+    
+    // Si la clave es válida, 1. Detenemos sonido local y actualizamos UI
+    stopAlarm(id);
+    timer.isAcknowledged = true;
+    updateTimerDisplay(id);
+
+    // 2. Enviar broadcast para apagar en otras PCs
+    if (realtimeChannel) {
+        realtimeChannel.send({
+            type: 'broadcast',
+            event: 'stop_alarm',
+            payload: { id: id }
+        }).catch(e => console.error('Error enviando broadcast:', e));
     }
 
-    // Usar setTimeout para que el navegador procese el cese del audio antes de bloquear el hilo con prompt()
-    setTimeout(async () => {
-        const op = validateOperator(true); // Siempre pedir en modificaciones
-        if (!op) {
-            // Si cancela, reanudamos la alarma
-            if (timer) {
-                timer.isAcknowledged = false;
-                startContinuousAlarm(id);
-                updateTimerDisplay(id);
-            }
-            return;
-        }
+    // 3. Sincronizar estado final a DB
+    try {
+        await sb.from('timers').update({ 
+            isAcknowledged: true,
+            isCompleted: true,
+            isRunning: false,
+            remainingSeconds: 0
+        }).eq('id', id);
         
-        if (timer) {
-            // Enviar broadcast ultra-rápido (~50ms) para apagar la alarma instantáneamente en otras PCs
-            if (realtimeChannel) {
-                realtimeChannel.send({
-                    type: 'broadcast',
-                    event: 'stop_alarm',
-                    payload: { id: id }
-                }).catch(e => console.error('Error enviando broadcast:', e));
-            }
-
-            // Sincronizar el "silencio" en la base de datos de manera definitiva
-            try {
-                await sb.from('timers').update({ 
-                    isAcknowledged: true,
-                    isCompleted: true,
-                    isRunning: false,
-                    remainingSeconds: 0
-                }).eq('id', id);
-                
-                // LOG DEL EVENTO (CORRECCIÓN SOLICITADA)
-                logHistoryLocally('ALARMA DETENIDA', timer, op);
-            } catch (e) {
-                console.error('Error al silenciar alarma globalmente:', e);
-            }
-        }
-    }, 50);
+        logHistoryLocally('ALARMA DETENIDA', timer, op);
+    } catch (e) {
+        console.error('Error al silenciar alarma globalmente:', e);
+    }
 };
 
 // ==================== FORMULARIO ====================
