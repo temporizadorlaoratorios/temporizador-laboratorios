@@ -782,40 +782,63 @@ async function logHistoryLocally(action, timer, forcedOperator = null) {
     }
 }
 
-// Nueva función de validación interactiva
-function validateOperator(isModification = false) {
-    let op = document.getElementById('operator-name');
-    let operatorName = op ? op.value.trim() : "";
+// Nueva función de validación interactiva asíncrona (Modal HTML para NO bloquear el hilo principal)
+function validateOperatorAsync(isModification = false) {
+    return new Promise((resolve) => {
+        let op = document.getElementById('operator-name');
+        let operatorName = op ? op.value.trim() : "";
 
-    // REGLA: Si es modificación, SIEMPRE pedir prompt ignorando el panel central.
-    // Si es creación, solo pedir prompt si el panel central está vacío.
-    if (isModification || !operatorName) {
-        const msg = isModification 
-            ? "⚠️ MODIFICACIÓN: Ingrese su nombre o iniciales de usuario:" 
-            : "⚠️ ACCIÓN REQUERIDA: Ingrese su nombre o iniciales de usuario para continuar:";
+        // REGLA: Si es modificación, SIEMPRE pedir prompt ignorando el panel central.
+        // Si es creación, solo pedir prompt si el panel central está vacío.
+        if (isModification || !operatorName) {
             
-        const response = prompt(msg);
-        
-        if (response && response.trim()) {
-            const finalName = response.trim();
-            // Solo actualizamos el panel central si NO es una modificación (o si estaba vacío)
-            if (!isModification && op) {
-                op.value = finalName;
-                // localStorage.setItem('last-operator', finalName); // No guardamos para el siguiente timer
+            const modal = document.getElementById('operator-modal');
+            const input = document.getElementById('operator-modal-input');
+            const title = document.getElementById('operator-modal-title');
+            const form = document.getElementById('operator-form');
+            const cancelBtn = document.getElementById('operator-modal-cancel');
+            
+            if (!modal) {
+                // Fallback de ultra emergencia si el HTML no existe
+                const fallbackRes = prompt("Ingrese su nombre:");
+                return resolve(fallbackRes ? fallbackRes.trim() : false);
             }
-            return finalName; // Retornamos el nombre para usarlo en la acción
+
+            title.textContent = isModification ? "⚠️ MODIFICACIÓN" : "⚠️ ACCIÓN REQUERIDA";
+            input.value = '';
+            modal.style.display = 'flex';
+            setTimeout(() => input.focus(), 50);
+
+            // Evitar duplicar event listeners
+            const cleanup = () => {
+                form.onsubmit = null;
+                cancelBtn.onclick = null;
+                modal.style.display = 'none';
+            };
+
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                const val = input.value.trim();
+                if (val) {
+                    if (!isModification && op) op.value = val;
+                    cleanup();
+                    resolve(val);
+                }
+            };
+
+            cancelBtn.onclick = () => {
+                if (!isModification && op && !operatorName) {
+                    op.classList.add('input-error');
+                    op.focus();
+                    setTimeout(() => op.classList.remove('input-error'), 1000);
+                }
+                cleanup();
+                resolve(false);
+            };
         } else {
-            // Si cancela o deja vacío
-            if (!isModification && op && !operatorName) {
-                op.classList.add('input-error');
-                op.focus();
-                setTimeout(() => op.classList.remove('input-error'), 1000);
-            }
-            return false;
+            resolve(operatorName); // Retornamos el nombre del panel central (para creación)
         }
-    }
-    
-    return operatorName; // Retornamos el nombre del panel central (para creación)
+    });
 }
 
 // ==================== PANEL DE DIAGNÓSTICO ====================
@@ -1063,7 +1086,7 @@ function updateTimerDisplay(timerId) {
 
 // ==================== ACCIONES DB MANUALES ====================
 window.toggleTimer = async (id) => {
-    const op = validateOperator(true); // Siempre pedir en modificaciones
+    const op = await validateOperatorAsync(true); // Siempre pedir en modificaciones
     if (!op) return;
     
     const timer = AppState.timers.find(t => t.id === id);
@@ -1101,7 +1124,7 @@ window.toggleTimer = async (id) => {
 };
 
 window.resetTimer = async (id) => {
-    const op = validateOperator(true); // Siempre pedir en modificaciones
+    const op = await validateOperatorAsync(true); // Siempre pedir en modificaciones
     if (!op) return;
     
     const timer = AppState.timers.find(t => t.id === id);
@@ -1128,7 +1151,7 @@ window.resetTimer = async (id) => {
 };
 
 window.deleteTimer = async (id) => {
-    const op = validateOperator(true); // Siempre pedir en modificaciones
+    const op = await validateOperatorAsync(true); // Siempre pedir en modificaciones
     if (!op) return;
     
     if (confirm('¿Eliminar este temporizador?')) {
@@ -1146,8 +1169,8 @@ window.handleStopAlarm = async (id) => {
     const timer = AppState.timers.find(t => t.id == id);
     if (!timer) return;
 
-    // Validar el operador ANTES de detener el sonido
-    const op = validateOperator(true); 
+    // Validar el operador ANTES de detener el sonido (No bloquea el Worker)
+    const op = await validateOperatorAsync(true); 
     if (!op) {
         // El usuario canceló o dejó vacío, la alarma SIGUE sonando
         return;
@@ -1298,7 +1321,7 @@ elements.studyTypeInput.addEventListener('input', (e) => {
 
 elements.form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const op = validateOperator(false); // Creación: usar panel central si tiene valor
+    const op = await validateOperatorAsync(false); // Creación: usar panel central si tiene valor
     if (!op) return; 
     
     // No persistimos el usuario para forzar una carga limpia cada vez

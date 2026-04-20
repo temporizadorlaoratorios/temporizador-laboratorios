@@ -373,6 +373,21 @@
         </div>
     </div>
 
+    <!-- Modal Validar Operador -->
+    <div id="operator-modal" class="modal hidden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; backdrop-filter: blur(8px); z-index: 9999;">
+        <div style="background: var(--color-bg-secondary); padding: 30px; border-radius: var(--radius-md); width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <h3 id="operator-modal-title" style="margin-top: 0; color: var(--color-primary); margin-bottom: 20px;">Acción Requerida</h3>
+            <p id="operator-modal-message" style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 15px;">Ingrese su nombre o iniciales para continuar:</p>
+            <form id="operator-form">
+                <input type="text" id="operator-modal-input" required class="form-input-compact" style="width: 100%; box-sizing: border-box; margin-bottom: 20px; text-transform: uppercase;">
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="operator-modal-cancel" class="control-btn-compact control-btn-secondary-compact" style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="submit-btn-compact" style="flex: 1; padding: 10px;">Aceptar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal Ajustes de Tiempo (Presets) -->
     <div id="modal-presets" onclick="if(event.target === this) closePresetsModal()" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; backdrop-filter: blur(8px); z-index: 2000;">
         <div style="background: var(--color-bg-secondary); padding: 30px; border-radius: 16px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid rgba(255, 255, 255, 0.15);">
