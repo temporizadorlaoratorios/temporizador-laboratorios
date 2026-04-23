@@ -307,6 +307,24 @@
                 e.preventDefault();
                 e.stopPropagation();
 
+                // === PRE-ACTIVAR AUDIO CON EL GESTO DEL USUARIO ===
+                // El clic en "Entrar" es un gesto válido para Chrome.
+                // Aprovechamos para desbloquear el audio ANTES de redirigir.
+                try {
+                    const preAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+                    preAudio.volume = 0.01;
+                    preAudio.play().then(() => {
+                        preAudio.pause();
+                        sessionStorage.setItem('audio-primed', 'true');
+                        console.log('🔊 Audio pre-activado desde login');
+                    }).catch(() => {});
+                    
+                    // También solicitar permisos de notificación
+                    if ('Notification' in window && Notification.permission === 'default') {
+                        Notification.requestPermission();
+                    }
+                } catch(e) {}
+
                 // BLOQUEO: No permitir login desde navegador si la PWA está activa
                 if (isPwaAlive()) {
                     errorMsg.textContent = '📱 No podés iniciar sesión desde el navegador mientras la app PWA está abierta. Usá la aplicación instalada.';
