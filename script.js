@@ -285,18 +285,91 @@ const AppState = {
 let realtimeChannel = null;
 
 
-// --- HACK ANTI-THROTTLING PARA SEGUNDO PLANO ---
+// --- SISTEMA ANTI-THROTTLING ROBUSTO PARA PWA EN BACKGROUND ---
+
+// Generador de WAV base64 en memoria (super liviano, onda cuadrada) para evadir bloqueo de AudioContext
+function createWavFileBase64(freq, duration) {
+    const sr = 8000; const volume = 127; const samples = Math.floor(duration * sr);
+    const buf = new Uint8Array(44 + samples);
+    const writeString = (o, str) => { for(let i=0; i<str.length; i++) buf[o+i] = str.charCodeAt(i); };
+    const write32 = (o, val) => { buf[o] = val&255; buf[o+1] = (val>>8)&255; buf[o+2] = (val>>16)&255; buf[o+3] = (val>>24)&255; };
+    const write16 = (o, val) => { buf[o] = val&255; buf[o+1] = (val>>8)&255; };
+    
+    writeString(0, 'RIFF'); write32(4, 36 + samples); writeString(8, 'WAVEfmt '); 
+    write32(16, 16); write16(20, 1); write16(22, 1); write32(24, sr); write32(28, sr); write16(32, 1); write16(34, 8);
+    writeString(36, 'data'); write32(40, samples);
+    for (let i = 0; i < samples; i++) buf[44 + i] = (Math.sin(2 * Math.PI * freq * (i / sr)) > 0 ? 127 + volume : 127 - volume);
+    
+    let str = ""; for(let i=0; i<buf.length; i+=1000) str += String.fromCharCode.apply(null, buf.subarray(i, i+1000));
+    return 'data:audio/wav;base64,' + btoa(str);
+}
+
+// Audio silencioso de keepalive (mantiene la sesión de audio viva)
 const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
 silentAudio.loop = true;
 silentAudio.volume = 0.01;
+
+// Beep de emergencia como HTMLAudioElement puro (NO oscilador Web Audio API que se suspende)
+let emergencyAudio = new Audio(createWavFileBase64(900, 0.4));
+emergencyAudio.volume = 1.0;
+
+// Segundo beep de respaldo (frecuencia diferente, por si el primero fue garbage-collected)
+let backupAudio = new Audio(createWavFileBase64(1100, 0.3));
+backupAudio.volume = 1.0;
+
 let backgroundModeEnabled = false;
+let audioKeepaliveInterval = null;
 
 function enableBackgroundMode() {
-    if (!backgroundModeEnabled) {
-        silentAudio.play().then(() => {
-            backgroundModeEnabled = true;
-            console.log('🛡️ Protección anti-suspensión activada.');
-        }).catch(e => console.warn('No se pudo activar protección (requiere clic previo)', e));
+    if (backgroundModeEnabled) return;
+    
+    silentAudio.play().then(() => {
+        backgroundModeEnabled = true;
+        console.log('🛡️ Protección anti-suspensión activada.');
+        
+        // Destrabar emergencyAudio y backupAudio (Play -> Pause rapidísimo)
+        emergencyAudio.play().then(() => emergencyAudio.pause()).catch(e => console.warn(e));
+        backupAudio.play().then(() => backupAudio.pause()).catch(e => console.warn(e));
+        
+        // Iniciar keepalive auto-reparable cada 25 segundos
+        if (!audioKeepaliveInterval) {
+            audioKeepaliveInterval = setInterval(repairAudioKeepalive, 25000);
+        }
+    }).catch(e => console.warn('No se pudo activar protección (requiere clic previo)', e));
+}
+
+// Auto-reparación: cada 25s verificar que el audio sigue vivo y reparar si Chrome lo mató
+function repairAudioKeepalive() {
+    // 1. Verificar silentAudio keepalive
+    if (silentAudio.paused) {
+        console.warn('⚠️ Audio keepalive fue pausado por el navegador. Re-activando...');
+        silentAudio.play().catch(e => console.warn('No se pudo re-activar keepalive:', e));
+    }
+    
+    // 2. Verificar AudioContext global
+    if (globalAudioContext && globalAudioContext.state === 'suspended') {
+        console.warn('⚠️ AudioContext suspendido. Intentando resume...');
+        globalAudioContext.resume().catch(e => console.warn('Resume falló:', e));
+    }
+    
+    // 3. Re-crear emergencyAudio si fue garbage-collected o dañado
+    try {
+        if (!emergencyAudio || emergencyAudio.error) {
+            console.warn('⚠️ emergencyAudio dañado. Re-creando...');
+            emergencyAudio = new Audio(createWavFileBase64(900, 0.4));
+            emergencyAudio.volume = 1.0;
+        }
+        if (!backupAudio || backupAudio.error) {
+            backupAudio = new Audio(createWavFileBase64(1100, 0.3));
+            backupAudio.volume = 1.0;
+        }
+    } catch(e) {
+        console.warn('Error re-creando audio:', e);
+    }
+    
+    // 4. Si hay alarmas activas, re-destrabar el emergencyAudio preventivamente
+    if (Object.keys(AppState?.activeAlarms || {}).length > 0) {
+        emergencyAudio.play().then(() => emergencyAudio.pause()).catch(() => {});
     }
 }
 
@@ -304,13 +377,48 @@ function enableBackgroundMode() {
 document.addEventListener('click', enableBackgroundMode, { once: true });
 document.addEventListener('touchstart', enableBackgroundMode, { once: true });
 
-// --- RECARGA AUTOMÁTICA AL MAXIMIZAR ---
+// TAMBIÉN re-activar cuando la ventana vuelve al foco (por si Chrome mató todo)
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
+        // Re-activar protección de audio
+        if (backgroundModeEnabled) {
+            repairAudioKeepalive();
+        }
         console.log('🔄 Ventana maximizada: Forzando recarga de datos para evitar desincronización...');
-        loadInitialData(); 
+        loadInitialData();
     }
 });
+
+// --- WEB LOCK API: Evitar que Chrome congele la pestaña/PWA ---
+if (navigator.locks) {
+    navigator.locks.request('timer-app-keepalive', { mode: 'exclusive' }, () => {
+        // Este lock se mantiene mientras la app esté abierta.
+        // Chrome no congelará un tab que tenga un Web Lock activo.
+        console.log('🔒 Web Lock adquirido: Chrome no congelará esta pestaña.');
+        return new Promise(() => {}); // Nunca resolver = lock permanente
+    }).catch(e => console.warn('Web Lock no disponible:', e));
+}
+
+// --- TÍTULO PARPADEANTE DURANTE ALARMA ---
+const originalTitle = document.title;
+let titleBlinkInterval = null;
+
+function startTitleBlink() {
+    if (titleBlinkInterval) return;
+    let toggle = false;
+    titleBlinkInterval = setInterval(() => {
+        toggle = !toggle;
+        document.title = toggle ? '⏰ ¡¡ ALARMA !!' : originalTitle;
+    }, 800);
+}
+
+function stopTitleBlink() {
+    if (titleBlinkInterval) {
+        clearInterval(titleBlinkInterval);
+        titleBlinkInterval = null;
+        document.title = originalTitle;
+    }
+}
 // -----------------------------------------------
 
 // MOTOR DE BACKGROUND CON WEB WORKER (Anti-Throttling)
@@ -467,30 +575,97 @@ function startContinuousAlarm(timerId) {
     // Registrar alarma en Web Worker para evitar el throttling del navegador en background
     backgroundWorker.postMessage({ type: 'start_alarm', id: timerId });
     AppState.activeAlarms[timerId] = true;
+    
+    // Activar título parpadeante
+    startTitleBlink();
+    
+    // Intentar despertar el audio proactivamente
+    repairAudioKeepalive();
 }
 
 function playBeepTone() {
+    let audioPlayed = false;
+    
     try {
-        const audioContext = getAudioContext();
-        audioContext.resume(); // Forzar despertar en background si es posible
-        const frequencies = [900, 1100, 900, 1100];
-        let currentTime = audioContext.currentTime;
+        // === CAPA 1: Audio HTML5 directo (MÁS ROBUSTO en background profundo) ===
+        if (emergencyAudio) {
+            emergencyAudio.currentTime = 0;
+            emergencyAudio.play().then(() => { audioPlayed = true; }).catch(e => {
+                console.warn('emergencyAudio bloqueado:', e);
+                // Re-crear por si fue garbage-collected
+                emergencyAudio = new Audio(createWavFileBase64(900, 0.4));
+                emergencyAudio.volume = 1.0;
+            });
+        }
+        
+        // === CAPA 2: Audio de respaldo con frecuencia diferente ===
+        if (backupAudio) {
+            setTimeout(() => {
+                backupAudio.currentTime = 0;
+                backupAudio.play().catch(() => {
+                    backupAudio = new Audio(createWavFileBase64(1100, 0.3));
+                    backupAudio.volume = 1.0;
+                });
+            }, 200);
+        }
 
-        frequencies.forEach((freq, index) => {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.frequency.value = freq;
-            oscillator.type = 'square';
-            const startTime = currentTime + (index * 0.2);
-            gainNode.gain.setValueAtTime(0.5, startTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.18);
-            oscillator.start(startTime);
-            oscillator.stop(startTime + 0.18);
-        });
+        // === CAPA 3: Web Audio API Oscillator (funciona mejor en foreground) ===
+        const audioContext = getAudioContext();
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        
+        if (audioContext.state === 'running') {
+            const frequencies = [900, 1100, 900, 1100];
+            let currentTime = audioContext.currentTime;
+
+            frequencies.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = freq;
+                oscillator.type = 'square';
+                const startTime = currentTime + (index * 0.2);
+                gainNode.gain.setValueAtTime(0.5, startTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.18);
+                oscillator.start(startTime);
+                oscillator.stop(startTime + 0.18);
+            });
+        }
     } catch (e) {
         console.warn('Error reproduciendo audio en background:', e);
+    }
+    
+    // === CAPA 4: Web Notification con sonido (ÚLTIMO RECURSO, funciona SIEMPRE) ===
+    // Las notificaciones del sistema operativo SIEMPRE suenan, incluso con app minimizada toda la noche
+    if (document.visibilityState !== 'visible') {
+        try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const alarmIds = Object.keys(AppState.activeAlarms);
+                const firstAlarmTimer = alarmIds.length > 0 ? AppState.timers.find(t => t.id === alarmIds[0]) : null;
+                const body = firstAlarmTimer 
+                    ? `${firstAlarmTimer.patientName} - ${firstAlarmTimer.studyType}` 
+                    : 'Un temporizador ha finalizado';
+                
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        reg.showNotification('⏰ ¡ALARMA ACTIVA!', {
+                            body: body,
+                            icon: 'icon_transparente.png',
+                            badge: 'icon_transparente.png',
+                            requireInteraction: true,
+                            silent: false,
+                            vibrate: [500, 200, 500, 200, 500],
+                            tag: 'timer-alarm-sound', // Reemplaza notificaciones anteriores (no spam)
+                            renotify: true // Fuerza sonido aunque el tag sea el mismo
+                        });
+                    }).catch(() => {});
+                }
+            }
+        } catch(e) {
+            console.warn('Notification fallback error:', e);
+        }
     }
 }
 
@@ -498,6 +673,11 @@ function stopAlarm(timerId) {
     if (AppState.activeAlarms[timerId]) {
         backgroundWorker.postMessage({ type: 'stop_alarm', id: timerId });
         delete AppState.activeAlarms[timerId];
+    }
+
+    // Si no quedan alarmas activas, detener el título parpadeante
+    if (Object.keys(AppState.activeAlarms).length === 0) {
+        stopTitleBlink();
     }
 
     // Limpieza de UI incondicional (siempre que exista la tarjeta)
@@ -887,15 +1067,7 @@ function updateDebugOverlay() {
 backgroundWorker.onmessage = function(e) {
     if (e.data.type === 'beep') {
         if (!AppState.activeAlarms[e.data.id]) return; // Prevenir que beeps encolados suenen si la alarma ya fue detenida
-        playBeepTone();
-        // Fallback: mostrar notificación de respaldo cada vez que hace beep (pero limitada para no hacer spam)
-        // Solo las mostramos en la PC receptora si no está en foco y tiene el tab en background
-        if (document.visibilityState !== 'visible') {
-            const t = AppState.timers.find(timer => timer.id === e.data.id);
-            if (t && Math.random() < 0.1) { // 10% de probabilidad por tick (cada 15s) para no floodear el SO
-                // Opcional: showNotification(t); 
-            }
-        }
+        playBeepTone(); // playBeepTone ahora incluye notificación como capa 4 interna
     } else if (e.data.type === 'sync_check') {
         const activeIds = Object.keys(AppState.activeAlarms);
         if (activeIds.length > 0) {

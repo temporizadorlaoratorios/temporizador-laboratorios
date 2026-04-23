@@ -1,4 +1,4 @@
-const CACHE_NAME = 'temporalizador-v18';
+const CACHE_NAME = 'temporalizador-v19';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -50,5 +50,25 @@ self.addEventListener('fetch', event => {
                 // Sin conexión: usar cache
                 return caches.match(event.request);
             })
+    );
+});
+
+// Al hacer clic en la notificación, traer la ventana de la PWA al frente
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            // Si ya hay una ventana abierta, enfocarla
+            for (const client of clientList) {
+                if (client.url.includes('index.html') && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // Si no hay ventana, abrir una nueva
+            if (clients.openWindow) {
+                return clients.openWindow('/index.html');
+            }
+        })
     );
 });
