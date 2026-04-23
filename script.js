@@ -261,17 +261,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadInitialData();
     
-    // Cargar último operador usado (deshabilitado por requerimiento)
-    // const lastOp = localStorage.getItem('last-operator');
-    // if (lastOp && elements.operatorInput) {
-    //     elements.operatorInput.value = lastOp;
-    // }
-    
     // Sincronización de Reloj Inicial y Periódica (Cada 10 segundos)
-    // createDebugOverlay(); // Ocultado a pedido del usuario
     syncTimeWithServer().then(() => {
         setInterval(syncTimeWithServer, 10000); 
     });
+
+    // ========== OVERLAY DE ACTIVACIÓN OBLIGATORIA ==========
+    // Muestra un botón grande que OBLIGA al usuario a hacer clic al abrir la app.
+    // Ese clic desbloquea el audio del navegador para toda la sesión.
+    showActivationOverlay();
 });
 
 // ==================== ESTADO GLOBAL LOCAL ====================
@@ -373,9 +371,84 @@ function repairAudioKeepalive() {
     }
 }
 
-// Activar al primer clic o tap en cualquier parte de la pantalla
+// La activación ahora se hace desde el overlay obligatorio (showActivationOverlay)
+// Fallback: si por algún motivo el overlay no se mostró, activar con cualquier clic
 document.addEventListener('click', enableBackgroundMode, { once: true });
 document.addEventListener('touchstart', enableBackgroundMode, { once: true });
+
+// ==================== OVERLAY DE ACTIVACIÓN OBLIGATORIA ====================
+function showActivationOverlay() {
+    // No mostrar si ya se activó el audio en esta sesión
+    if (backgroundModeEnabled) return;
+    
+    // No mostrar si la PWA está bloqueada por otra instancia
+    if (document.getElementById('pwa-block-overlay')) return;
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'activation-overlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(10, 10, 30, 0.97);
+        z-index: 50000;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        text-align: center; padding: 20px; box-sizing: border-box;
+        backdrop-filter: blur(15px);
+        animation: fadeIn 0.3s ease;
+    `;
+    overlay.innerHTML = `
+        <div style="font-size:5rem; margin-bottom:20px; animation: pulse 2s infinite;">🔔</div>
+        <h2 style="color:#ffb347; font-family:Inter,sans-serif; font-size:1.8rem; margin-bottom:15px; font-weight:800;">
+            ACTIVAR SISTEMA DE ALARMAS
+        </h2>
+        <p style="color:#ccc; font-family:Inter,sans-serif; font-size:1rem; max-width:450px; line-height:1.6; margin-bottom:30px;">
+            Para que las alarmas suenen correctamente<br>
+            (incluso con la ventana minimizada),<br>
+            presioná el botón de abajo.
+        </p>
+        <button id="activate-audio-btn" style="
+            background: linear-gradient(135deg, #ff6b35, #ff3366);
+            color: white; border: none; padding: 18px 50px;
+            border-radius: 12px; font-size: 1.3rem; font-weight: 800;
+            cursor: pointer; font-family: Inter, sans-serif;
+            box-shadow: 0 8px 30px rgba(255, 51, 102, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: pulseBtn 2s infinite;
+            text-transform: uppercase; letter-spacing: 1px;
+        ">▶ ACTIVAR ALARMAS</button>
+        <p style="color:#666; font-family:Inter,sans-serif; font-size:0.8rem; margin-top:25px;">
+            Solo es necesario una vez al abrir la aplicación
+        </p>
+        <style>
+            @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+            @keyframes pulseBtn { 0%,100% { box-shadow: 0 8px 30px rgba(255,51,102,0.4); } 50% { box-shadow: 0 8px 50px rgba(255,51,102,0.7); } }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            #activate-audio-btn:hover { transform: scale(1.05); }
+        </style>
+    `;
+    document.body.appendChild(overlay);
+    
+    document.getElementById('activate-audio-btn').addEventListener('click', () => {
+        // Este clic del usuario desbloquea el audio en Chrome
+        enableBackgroundMode();
+        
+        // Solicitar permisos de notificación si no se pidieron aún
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+        
+        // Animar la salida y remover
+        overlay.style.transition = 'opacity 0.4s ease';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 400);
+    });
+    
+    // También activar si tocan cualquier parte del overlay (mobile)
+    overlay.addEventListener('touchstart', (e) => {
+        if (e.target !== document.getElementById('activate-audio-btn')) {
+            document.getElementById('activate-audio-btn').click();
+        }
+    });
+}
 
 // TAMBIÉN re-activar cuando la ventana vuelve al foco (por si Chrome mató todo)
 document.addEventListener('visibilitychange', () => {
