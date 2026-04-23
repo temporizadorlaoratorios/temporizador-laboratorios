@@ -283,37 +283,10 @@ const AppState = {
 let realtimeChannel = null;
 
 
-// --- SISTEMA ANTI-THROTTLING ROBUSTO PARA PWA EN BACKGROUND ---
-
-// Generador de WAV base64 en memoria (super liviano, onda cuadrada) para evadir bloqueo de AudioContext
-function createWavFileBase64(freq, duration) {
-    const sr = 8000; const volume = 127; const samples = Math.floor(duration * sr);
-    const buf = new Uint8Array(44 + samples);
-    const writeString = (o, str) => { for(let i=0; i<str.length; i++) buf[o+i] = str.charCodeAt(i); };
-    const write32 = (o, val) => { buf[o] = val&255; buf[o+1] = (val>>8)&255; buf[o+2] = (val>>16)&255; buf[o+3] = (val>>24)&255; };
-    const write16 = (o, val) => { buf[o] = val&255; buf[o+1] = (val>>8)&255; };
-    
-    writeString(0, 'RIFF'); write32(4, 36 + samples); writeString(8, 'WAVEfmt '); 
-    write32(16, 16); write16(20, 1); write16(22, 1); write32(24, sr); write32(28, sr); write16(32, 1); write16(34, 8);
-    writeString(36, 'data'); write32(40, samples);
-    for (let i = 0; i < samples; i++) buf[44 + i] = (Math.sin(2 * Math.PI * freq * (i / sr)) > 0 ? 127 + volume : 127 - volume);
-    
-    let str = ""; for(let i=0; i<buf.length; i+=1000) str += String.fromCharCode.apply(null, buf.subarray(i, i+1000));
-    return 'data:audio/wav;base64,' + btoa(str);
-}
-
 // Audio silencioso de keepalive (mantiene la sesión de audio viva)
 const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
 silentAudio.loop = true;
 silentAudio.volume = 0.01;
-
-// Beep de emergencia como HTMLAudioElement puro (NO oscilador Web Audio API que se suspende)
-let emergencyAudio = new Audio(createWavFileBase64(900, 0.4));
-emergencyAudio.volume = 1.0;
-
-// Segundo beep de respaldo (frecuencia diferente, por si el primero fue garbage-collected)
-let backupAudio = new Audio(createWavFileBase64(1100, 0.3));
-backupAudio.volume = 1.0;
 
 let backgroundModeEnabled = false;
 let audioKeepaliveInterval = null;
@@ -324,10 +297,6 @@ function enableBackgroundMode() {
     silentAudio.play().then(() => {
         backgroundModeEnabled = true;
         console.log('🛡️ Protección anti-suspensión activada.');
-        
-        // Destrabar emergencyAudio y backupAudio (Play -> Pause rapidísimo)
-        emergencyAudio.play().then(() => emergencyAudio.pause()).catch(e => console.warn(e));
-        backupAudio.play().then(() => backupAudio.pause()).catch(e => console.warn(e));
         
         // Iniciar keepalive auto-reparable cada 25 segundos
         if (!audioKeepaliveInterval) {
@@ -348,26 +317,6 @@ function repairAudioKeepalive() {
     if (globalAudioContext && globalAudioContext.state === 'suspended') {
         console.warn('⚠️ AudioContext suspendido. Intentando resume...');
         globalAudioContext.resume().catch(e => console.warn('Resume falló:', e));
-    }
-    
-    // 3. Re-crear emergencyAudio si fue garbage-collected o dañado
-    try {
-        if (!emergencyAudio || emergencyAudio.error) {
-            console.warn('⚠️ emergencyAudio dañado. Re-creando...');
-            emergencyAudio = new Audio(createWavFileBase64(900, 0.4));
-            emergencyAudio.volume = 1.0;
-        }
-        if (!backupAudio || backupAudio.error) {
-            backupAudio = new Audio(createWavFileBase64(1100, 0.3));
-            backupAudio.volume = 1.0;
-        }
-    } catch(e) {
-        console.warn('Error re-creando audio:', e);
-    }
-    
-    // 4. Si hay alarmas activas, re-destrabar el emergencyAudio preventivamente
-    if (Object.keys(AppState?.activeAlarms || {}).length > 0) {
-        emergencyAudio.play().then(() => emergencyAudio.pause()).catch(() => {});
     }
 }
 
@@ -655,30 +604,7 @@ function startContinuousAlarm(timerId) {
 }
 
 function playBeepTone() {
-    let audioPlayed = false;
-    
     try {
-        // === CAPA 1: Audio HTML5 directo (MÁS ROBUSTO en background profundo) ===
-        if (emergencyAudio) {
-            emergencyAudio.currentTime = 0;
-            emergencyAudio.play().then(() => { audioPlayed = true; }).catch(e => {
-                console.warn('emergencyAudio bloqueado, usando backup:', e);
-                // Re-crear emergencyAudio por si fue garbage-collected
-                emergencyAudio = new Audio(createWavFileBase64(900, 0.4));
-                emergencyAudio.volume = 1.0;
-                
-                // === CAPA 2: Audio de respaldo SOLO si el principal falló ===
-                if (backupAudio) {
-                    backupAudio.currentTime = 0;
-                    backupAudio.play().catch(() => {
-                        backupAudio = new Audio(createWavFileBase64(1100, 0.3));
-                        backupAudio.volume = 1.0;
-                    });
-                }
-            });
-        }
-
-        // === CAPA 3: Web Audio API Oscillator (funciona mejor en foreground) ===
         const audioContext = getAudioContext();
         if (audioContext.state === 'suspended') {
             audioContext.resume();
@@ -703,7 +629,7 @@ function playBeepTone() {
             });
         }
     } catch (e) {
-        console.warn('Error reproduciendo audio en background:', e);
+        console.warn('Error reproduciendo audio:', e);
     }
 }
 
