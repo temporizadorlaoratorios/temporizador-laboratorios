@@ -591,22 +591,20 @@ function playBeepTone() {
         if (emergencyAudio) {
             emergencyAudio.currentTime = 0;
             emergencyAudio.play().then(() => { audioPlayed = true; }).catch(e => {
-                console.warn('emergencyAudio bloqueado:', e);
-                // Re-crear por si fue garbage-collected
+                console.warn('emergencyAudio bloqueado, usando backup:', e);
+                // Re-crear emergencyAudio por si fue garbage-collected
                 emergencyAudio = new Audio(createWavFileBase64(900, 0.4));
                 emergencyAudio.volume = 1.0;
+                
+                // === CAPA 2: Audio de respaldo SOLO si el principal falló ===
+                if (backupAudio) {
+                    backupAudio.currentTime = 0;
+                    backupAudio.play().catch(() => {
+                        backupAudio = new Audio(createWavFileBase64(1100, 0.3));
+                        backupAudio.volume = 1.0;
+                    });
+                }
             });
-        }
-        
-        // === CAPA 2: Audio de respaldo con frecuencia diferente ===
-        if (backupAudio) {
-            setTimeout(() => {
-                backupAudio.currentTime = 0;
-                backupAudio.play().catch(() => {
-                    backupAudio = new Audio(createWavFileBase64(1100, 0.3));
-                    backupAudio.volume = 1.0;
-                });
-            }, 200);
         }
 
         // === CAPA 3: Web Audio API Oscillator (funciona mejor en foreground) ===
