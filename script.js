@@ -632,6 +632,26 @@ function startContinuousAlarm(timerId) {
     
     // Intentar despertar el audio proactivamente
     repairAudioKeepalive();
+    
+    // Notificación del SO (UNA SOLA VEZ al iniciar la alarma, silent para no cambiar el sonido)
+    if ('Notification' in window && Notification.permission === 'granted') {
+        const timer = AppState.timers.find(t => t.id === timerId);
+        const body = timer ? `${timer.patientName} - ${timer.studyType}` : 'Temporizador finalizado';
+        try {
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.showNotification('⏰ ¡ALARMA ACTIVA!', {
+                        body: body,
+                        icon: 'icon_transparente.png',
+                        badge: 'icon_transparente.png',
+                        requireInteraction: true,
+                        silent: true, // NO sumar sonido del SO al sonido de la alarma
+                        tag: 'timer-alarm-' + timerId
+                    });
+                }).catch(() => {});
+            }
+        } catch(e) {}
+    }
 }
 
 function playBeepTone() {
@@ -684,37 +704,6 @@ function playBeepTone() {
         }
     } catch (e) {
         console.warn('Error reproduciendo audio en background:', e);
-    }
-    
-    // === CAPA 4: Web Notification con sonido (ÚLTIMO RECURSO, funciona SIEMPRE) ===
-    // Las notificaciones del sistema operativo SIEMPRE suenan, incluso con app minimizada toda la noche
-    if (document.visibilityState !== 'visible') {
-        try {
-            if ('Notification' in window && Notification.permission === 'granted') {
-                const alarmIds = Object.keys(AppState.activeAlarms);
-                const firstAlarmTimer = alarmIds.length > 0 ? AppState.timers.find(t => t.id === alarmIds[0]) : null;
-                const body = firstAlarmTimer 
-                    ? `${firstAlarmTimer.patientName} - ${firstAlarmTimer.studyType}` 
-                    : 'Un temporizador ha finalizado';
-                
-                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.ready.then(reg => {
-                        reg.showNotification('⏰ ¡ALARMA ACTIVA!', {
-                            body: body,
-                            icon: 'icon_transparente.png',
-                            badge: 'icon_transparente.png',
-                            requireInteraction: true,
-                            silent: false,
-                            vibrate: [500, 200, 500, 200, 500],
-                            tag: 'timer-alarm-sound', // Reemplaza notificaciones anteriores (no spam)
-                            renotify: true // Fuerza sonido aunque el tag sea el mismo
-                        });
-                    }).catch(() => {});
-                }
-            }
-        } catch(e) {
-            console.warn('Notification fallback error:', e);
-        }
     }
 }
 
