@@ -320,9 +320,10 @@ function repairAudioKeepalive() {
     }
 }
 
-// Activar con cualquier interacción del usuario (fallback universal)
-document.addEventListener('click', enableBackgroundMode, { once: true });
-document.addEventListener('touchstart', enableBackgroundMode, { once: true });
+// Activar con cualquier interacción del usuario (transparente)
+['click', 'touchstart', 'mousedown', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, enableBackgroundMode, { once: true });
+});
 
 // ==================== AUTO-ACTIVACIÓN INTELIGENTE DE AUDIO ====================
 function tryAutoActivateAudio() {
@@ -330,51 +331,13 @@ function tryAutoActivateAudio() {
     silentAudio.play().then(() => {
         backgroundModeEnabled = true;
         console.log('🔊 Audio auto-activado silenciosamente.');
-        emergencyAudio.play().then(() => emergencyAudio.pause()).catch(() => {});
-        backupAudio.play().then(() => backupAudio.pause()).catch(() => {});
         if (!audioKeepaliveInterval) {
             audioKeepaliveInterval = setInterval(repairAudioKeepalive, 25000);
         }
-        // Remover banner si existía
-        const banner = document.getElementById('audio-activation-banner');
-        if (banner) banner.remove();
     }).catch(() => {
-        // No se pudo auto-activar: mostrar banner sutil (NO bloqueante)
-        console.warn('⚠️ Audio requiere interacción. Mostrando banner...');
-        showAudioBanner();
+        // Si falla, no mostramos banner. Se activará solo al primer click/tecla del usuario.
+        console.log('⏳ Audio en espera de interacción del usuario...');
     });
-}
-
-function showAudioBanner() {
-    if (document.getElementById('audio-activation-banner')) return;
-    if (document.getElementById('pwa-block-overlay')) return;
-    
-    const banner = document.createElement('div');
-    banner.id = 'audio-activation-banner';
-    banner.style.cssText = `
-        position: fixed; top: 0; left: 0; width: 100%; z-index: 50000;
-        background: linear-gradient(135deg, #ff6b35, #ff3366);
-        color: white; padding: 12px 20px;
-        display: flex; align-items: center; justify-content: center; gap: 12px;
-        font-family: Inter, sans-serif; font-size: 0.95rem; font-weight: 600;
-        cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        animation: slideDown 0.3s ease;
-    `;
-    banner.innerHTML = `
-        <span>🔔 Tocá aquí para activar las alarmas</span>
-        <style>@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }</style>
-    `;
-    banner.addEventListener('click', () => {
-        enableBackgroundMode();
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
-        banner.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-        banner.style.transform = 'translateY(-100%)';
-        banner.style.opacity = '0';
-        setTimeout(() => banner.remove(), 300);
-    });
-    document.body.appendChild(banner);
 }
 
 // TAMBIÉN re-activar cuando la ventana vuelve al foco (por si Chrome mató todo)
