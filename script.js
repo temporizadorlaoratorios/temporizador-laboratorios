@@ -389,6 +389,7 @@ const workerCode = `
     let interval;
     let alarms = {}; // Almacena los contadores para cada alarma activa
     let ticks = 0;
+    let beepTick = 0;
     self.onmessage = function(e) {
         if (e.data.type === 'start_engine') {
             interval = setInterval(() => { 
@@ -403,17 +404,22 @@ const workerCode = `
                     }
                 }
 
-                // Alertas de sonido (cada 1.5s = 15 ticks)
-                Object.keys(alarms).forEach(id => {
-                    alarms[id]++;
-                    if (alarms[id] >= 15) {
-                        alarms[id] = 0;
-                        self.postMessage({ type: 'beep', id: id });
+                // Alertas de sonido (cada 1.5s = 15 ticks) - unificado para evitar superposiciones
+                if (Object.keys(alarms).length > 0) {
+                    beepTick++;
+                    if (beepTick >= 15) {
+                        beepTick = 0;
+                        self.postMessage({ type: 'beep' });
                     }
-                });
+                } else {
+                    beepTick = 0;
+                }
             }, 100);
         } else if (e.data.type === 'start_alarm') {
-            alarms[e.data.id] = 15; // Iniciar disparo en el siguiente tick
+            alarms[e.data.id] = true;
+            if (Object.keys(alarms).length === 1) {
+                beepTick = 14; // Iniciar disparo en el siguiente tick si es la primera alarma
+            }
         } else if (e.data.type === 'stop_alarm') {
             delete alarms[e.data.id];
         } else if (e.data.type === 'stop_engine') {
@@ -614,6 +620,19 @@ function stopAlarm(timerId) {
         const stopBtn = card.querySelector('.control-btn-stop-compact');
         if (stopBtn) stopBtn.remove();
     }
+
+    // Cerrar notificaciones en la PWA correspondientes a esta alarma
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(registration => {
+            registration.getNotifications().then(notifications => {
+                notifications.forEach(notification => {
+                    if (notification.tag === 'timer-alarm-' + timerId || notification.tag === 'timer-completed-' + timerId) {
+                        notification.close();
+                    }
+                });
+            });
+        });
+    }
 }
 
 function showNotification(timer) {
@@ -626,7 +645,8 @@ function showNotification(timer) {
             icon: 'logo.png',
             requireInteraction: true,
             silent: false, // Forzar que no sea silenciosa (ayuda en background)
-            vibrate: [300, 100, 300, 100, 300]
+            vibrate: [300, 100, 300, 100, 300],
+            tag: 'timer-completed-' + timer.id
         };
         
         if (navigator.serviceWorker && navigator.serviceWorker.ready) {
@@ -993,7 +1013,7 @@ function updateDebugOverlay() {
 // MOTOR DEL RELOJ LOCAL PROCESADO EN BACKGROUND POR EL WEB WORKER
 backgroundWorker.onmessage = function(e) {
     if (e.data.type === 'beep') {
-        if (!AppState.activeAlarms[e.data.id]) return; // Prevenir que beeps encolados suenen si la alarma ya fue detenida
+        if (Object.keys(AppState.activeAlarms).length === 0) return; // Ya no validamos por ID
         playBeepTone(); // playBeepTone ahora incluye notificación como capa 4 interna
     } else if (e.data.type === 'sync_check') {
         const activeIds = Object.keys(AppState.activeAlarms);
