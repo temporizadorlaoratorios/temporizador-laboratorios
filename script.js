@@ -550,26 +550,6 @@ function startContinuousAlarm(timerId) {
     
     // Intentar despertar el audio proactivamente
     repairAudioKeepalive();
-    
-    // Notificación del SO (UNA SOLA VEZ al iniciar la alarma, silent para no cambiar el sonido)
-    if ('Notification' in window && Notification.permission === 'granted') {
-        const timer = AppState.timers.find(t => t.id === timerId);
-        const body = timer ? `${timer.patientName} - ${timer.studyType}` : 'Temporizador finalizado';
-        try {
-            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.ready.then(reg => {
-                    reg.showNotification('⏰ ¡ALARMA ACTIVA!', {
-                        body: body,
-                        icon: 'icon_transparente.png',
-                        badge: 'icon_transparente.png',
-                        requireInteraction: true,
-                        silent: true, // NO sumar sonido del SO al sonido de la alarma
-                        tag: 'timer-alarm-' + timerId
-                    });
-                }).catch(() => {});
-            }
-        } catch(e) {}
-    }
 }
 
 function playBeepTone() {
