@@ -1,4 +1,4 @@
-const CACHE_NAME = 'temporalizador-v22';
+const CACHE_NAME = 'temporalizador-v23';
 const urlsToCache = [
     '/',
     '/index.html',

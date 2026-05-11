@@ -644,7 +644,7 @@ function showNotification(timer) {
             body: `${timer.patientName} - ${timer.studyType} completado.`,
             icon: 'logo.png',
             requireInteraction: true,
-            silent: false, // Forzar que no sea silenciosa (ayuda en background)
+            silent: true, // Silenciar para evitar que el sonido de la notificación del SO se superponga con el beep
             vibrate: [300, 100, 300, 100, 300],
             tag: 'timer-completed-' + timer.id
         };
