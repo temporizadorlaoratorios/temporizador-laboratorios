@@ -2030,11 +2030,16 @@ function hueToHex(hue) {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+function getThemeKey() {
+    const userId = localStorage.getItem('sb-token') || 'default';
+    return `theme-hue-${userId}`;
+}
+
 /**
  * Carga el tema guardado desde localStorage.
  */
 function loadSavedTheme() {
-    const savedHue = localStorage.getItem('theme-hue');
+    const savedHue = localStorage.getItem(getThemeKey());
     if (savedHue !== null) {
         const hue = parseInt(savedHue);
         if (!isNaN(hue) && hue >= 0 && hue <= 360) {
@@ -2070,7 +2075,7 @@ window.onCustomColorPick = (hexValue) => {
 
 window.resetTheme = () => {
     applyThemeHue(DEFAULT_THEME_HUE);
-    localStorage.removeItem('theme-hue');
+    localStorage.removeItem(getThemeKey());
     
     // Actualizar el color picker
     const picker = document.getElementById('design-custom-color');
@@ -2078,6 +2083,6 @@ window.resetTheme = () => {
 };
 
 window.saveAndCloseDesign = () => {
-    localStorage.setItem('theme-hue', currentDesignHue.toString());
+    localStorage.setItem(getThemeKey(), currentDesignHue.toString());
     closeDesignModal();
 };
