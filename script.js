@@ -1738,7 +1738,12 @@ HistoryManager.init();
 
 function logout() {
     if (confirm('¿Cerrar sesión?')) {
-        localStorage.clear();
+        // Solo eliminar credenciales, preservar preferencias como el color del tema
+        localStorage.removeItem('sb-token');
+        localStorage.removeItem('lab-id');
+        localStorage.removeItem('lab-logo');
+        localStorage.removeItem('lab-nombre');
+        
         const pwaParam = IS_PWA ? '?mode=pwa' : '';
         window.location.href = 'login.html' + pwaParam;
     }
