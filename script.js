@@ -201,6 +201,7 @@ async function deleteLogo() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadSavedTheme(); // Aplicar color personalizado guardado
     initLabBranding();
     
     const logoContainer = document.getElementById('logo-container');
@@ -1893,3 +1894,190 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// ==================== PERSONALIZACIÓN DE COLOR (DISEÑO DE PÁGINA) ====================
+// Hue por defecto del tema original (magenta)
+const DEFAULT_THEME_HUE = 325;
+let currentDesignHue = DEFAULT_THEME_HUE;
+
+/**
+ * Aplica un hue base a todas las CSS variables del tema.
+ * Deriva todos los colores de un solo valor de hue (0-360).
+ */
+function applyThemeHue(hue) {
+    const root = document.documentElement;
+    const bgHue = (hue - 5 + 360) % 360; // Hue ligeramente desplazado para fondos
+    const secHue = (hue - 35 + 360) % 360; // Secondary offset
+    const accHue = (hue + 15) % 360; // Accent offset
+
+    // Colores primarios
+    root.style.setProperty('--color-primary', `hsl(${hue}, 100%, 45%)`);
+    root.style.setProperty('--color-primary-dark', `hsl(${hue}, 100%, 30%)`);
+    root.style.setProperty('--color-secondary', `hsl(${secHue}, 60%, 55%)`);
+    root.style.setProperty('--color-accent', `hsl(${accHue}, 90%, 60%)`);
+
+    // Fondos (tintados sutilmente con el hue)
+    root.style.setProperty('--color-bg-primary', `hsl(${bgHue}, 20%, 10%)`);
+    root.style.setProperty('--color-bg-secondary', `hsl(${bgHue}, 20%, 14%)`);
+    root.style.setProperty('--color-bg-tertiary', `hsl(${bgHue}, 20%, 18%)`);
+    root.style.setProperty('--color-bg-card', `hsl(${bgHue}, 20%, 16%)`);
+
+    // Textos (tintados sutilmente)
+    root.style.setProperty('--color-text-secondary', `hsl(${bgHue}, 10%, 80%)`);
+    root.style.setProperty('--color-text-muted', `hsl(${bgHue}, 10%, 60%)`);
+
+    // Gradiente principal (se actualiza automáticamente porque usa var())
+    root.style.setProperty('--gradient-primary', `linear-gradient(135deg, hsl(${hue}, 100%, 45%), hsl(${secHue}, 60%, 55%))`);
+
+    // Actualizar background gradient (los radial-gradient del fondo)
+    const bgGradient = document.querySelector('.background-gradient');
+    if (bgGradient) {
+        bgGradient.style.background = `
+            radial-gradient(circle at 20% 50%, hsla(${hue}, 100%, 25%, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, hsla(${secHue}, 80%, 25%, 0.1) 0%, transparent 50%)
+        `;
+    }
+
+    // Actualizar la barra de preview si está visible
+    const previewBar = document.getElementById('design-preview-bar');
+    if (previewBar) {
+        previewBar.style.background = `linear-gradient(90deg, hsl(${hue}, 100%, 45%), hsl(${secHue}, 60%, 55%), hsl(${accHue}, 90%, 60%))`;
+    }
+
+    // Actualizar meta theme-color
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+        metaTheme.setAttribute('content', `hsl(${bgHue}, 20%, 10%)`);
+    }
+
+    currentDesignHue = hue;
+}
+
+/**
+ * Convierte un color HEX (#rrggbb) a HSL.
+ * Retorna { h, s, l } con h en grados (0-360), s y l en porcentaje (0-100).
+ */
+function hexToHsl(hex) {
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
+    }
+
+    return {
+        h: Math.round(h * 360),
+        s: Math.round(s * 100),
+        l: Math.round(l * 100)
+    };
+}
+
+/**
+ * Convierte un hue a un color HEX aproximado para el color picker.
+ */
+function hueToHex(hue) {
+    // Crear color HSL con saturación y luminosidad fija, convertir a HEX
+    const s = 1, l = 0.45;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((hue / 60) % 2 - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+
+    if (hue < 60)      { r = c; g = x; b = 0; }
+    else if (hue < 120) { r = x; g = c; b = 0; }
+    else if (hue < 180) { r = 0; g = c; b = x; }
+    else if (hue < 240) { r = 0; g = x; b = c; }
+    else if (hue < 300) { r = x; g = 0; b = c; }
+    else                { r = c; g = 0; b = x; }
+
+    const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+/**
+ * Carga el tema guardado desde localStorage.
+ */
+function loadSavedTheme() {
+    const savedHue = localStorage.getItem('theme-hue');
+    if (savedHue !== null) {
+        const hue = parseInt(savedHue);
+        if (!isNaN(hue) && hue >= 0 && hue <= 360) {
+            applyThemeHue(hue);
+        }
+    }
+}
+
+// --- Funciones del Modal de Diseño ---
+
+window.openDesignModal = () => {
+    const drop = document.getElementById('options-dropdown');
+    if (drop) drop.style.display = 'none';
+    
+    const modal = document.getElementById('modal-design');
+    if (modal) {
+        modal.style.display = 'flex';
+        
+        // Marcar el swatch activo
+        updateSwatchSelection(currentDesignHue);
+        
+        // Actualizar el color picker con el hue actual
+        const picker = document.getElementById('design-custom-color');
+        if (picker) picker.value = hueToHex(currentDesignHue);
+    }
+};
+
+window.closeDesignModal = () => {
+    const modal = document.getElementById('modal-design');
+    if (modal) modal.style.display = 'none';
+};
+
+window.selectDesignColor = (hue, swatchEl) => {
+    applyThemeHue(hue);
+    updateSwatchSelection(hue);
+    
+    // Actualizar el color picker
+    const picker = document.getElementById('design-custom-color');
+    if (picker) picker.value = hueToHex(hue);
+};
+
+window.onCustomColorPick = (hexValue) => {
+    const hsl = hexToHsl(hexValue);
+    applyThemeHue(hsl.h);
+    updateSwatchSelection(hsl.h);
+};
+
+function updateSwatchSelection(hue) {
+    const swatches = document.querySelectorAll('.design-color-swatch');
+    swatches.forEach(sw => {
+        const swHue = parseInt(sw.getAttribute('data-hue'));
+        sw.classList.toggle('active', swHue === hue);
+    });
+}
+
+window.resetTheme = () => {
+    applyThemeHue(DEFAULT_THEME_HUE);
+    updateSwatchSelection(DEFAULT_THEME_HUE);
+    localStorage.removeItem('theme-hue');
+    
+    // Actualizar el color picker
+    const picker = document.getElementById('design-custom-color');
+    if (picker) picker.value = hueToHex(DEFAULT_THEME_HUE);
+};
+
+window.saveAndCloseDesign = () => {
+    localStorage.setItem('theme-hue', currentDesignHue.toString());
+    closeDesignModal();
+};
