@@ -1154,11 +1154,13 @@ function updateTimerDisplay(timerId) {
             timeDisplay.style.color = timer.color;
             timeDisplay.style.filter = `drop-shadow(0 0 10px ${timer.color}88)`; // Brillo en los números
         } else {
-            timeDisplay.style.webkitBackgroundClip = 'text';
-            timeDisplay.style.webkitTextFillColor = 'transparent';
-            timeDisplay.style.background = 'var(--gradient-primary)';
-            timeDisplay.style.color = 'inherit';
-            timeDisplay.style.filter = 'drop-shadow(0 0 8px var(--color-primary-glow))';
+            // Al limpiar los estilos inline, el CSS nativo (.timer-time-compact) 
+            // se encarga de aplicar el gradient, el clip al texto y el brillo dinámico
+            timeDisplay.style.webkitBackgroundClip = '';
+            timeDisplay.style.webkitTextFillColor = '';
+            timeDisplay.style.background = '';
+            timeDisplay.style.color = '';
+            timeDisplay.style.filter = '';
         }
     }
 

@@ -555,7 +555,7 @@ input:-webkit-autofill:active{
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: 0.05em;
-    filter: drop-shadow(0 0 8px rgba(194, 0, 120, 0.3));
+    filter: drop-shadow(0 0 8px var(--color-primary-glow, rgba(194, 0, 120, 0.3)));
 }
 
 .timer-controls-compact {
