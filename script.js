@@ -1092,17 +1092,17 @@ function createTimerCard(timer) {
 
     const studyTypeUpper = (timer.studyType || '').toUpperCase();
     
-    // Aplicar color del preset si existe
-    if (timer.color) {
+    // Aplicar color del preset si existe (ignorar #c20078 viejo para usar el tema dinámico)
+    const isLegacyDefault = timer.color && timer.color.toLowerCase() === '#c20078';
+    
+    if (timer.color && !isLegacyDefault) {
         card.style.borderColor = timer.color;
         card.style.boxShadow = `0 0 20px ${timer.color}44`; // Glow tenue de la tarjeta
         card.setAttribute('data-preset-color', timer.color);
     } else {
-        // Fallback a los hardcoded actuales
-        if (studyTypeUpper.includes('PLR')) card.classList.add('card-plr');
-        else if (studyTypeUpper.includes('CTGN')) card.classList.add('card-ctgn');
-        else if (studyTypeUpper.includes('CTM')) card.classList.add('card-ctm');
-        else if (studyTypeUpper.includes('HPYLORI') || studyTypeUpper.includes('H PYLORI')) card.classList.add('card-hpylori');
+        // Fallback a heredar el color primario del tema
+        card.style.borderColor = 'var(--color-primary)';
+        card.style.boxShadow = '0 0 20px var(--color-primary-alpha44)';
     }
 
     const buttonText = timer.isCompleted ? 'Completado' : (timer.isRunning ? 'Pausar' : 'Iniciar');
@@ -1146,20 +1146,32 @@ function updateTimerDisplay(timerId) {
     if (timeDisplay) {
         timeDisplay.textContent = formatTime(timer.remainingSeconds);
         // Si hay color de preset, podemos teñir el tiempo también
-        if (timer.color) {
+        const isLegacyDefault = timer.color && timer.color.toLowerCase() === '#c20078';
+        if (timer.color && !isLegacyDefault) {
             timeDisplay.style.webkitBackgroundClip = 'initial';
             timeDisplay.style.webkitTextFillColor = 'initial';
             timeDisplay.style.background = 'none';
             timeDisplay.style.color = timer.color;
             timeDisplay.style.filter = `drop-shadow(0 0 10px ${timer.color}88)`; // Brillo en los números
+        } else {
+            timeDisplay.style.webkitBackgroundClip = 'text';
+            timeDisplay.style.webkitTextFillColor = 'transparent';
+            timeDisplay.style.background = 'var(--gradient-primary)';
+            timeDisplay.style.color = 'inherit';
+            timeDisplay.style.filter = 'drop-shadow(0 0 8px var(--color-primary-glow))';
         }
     }
 
     card.classList.toggle('paused', timer.isPaused);
     card.classList.toggle('completed', timer.isCompleted);
     
-    if (timer.isCompleted && timer.color) {
-        card.style.boxShadow = `0 0 20px ${timer.color}66`; // 40% alpha
+    if (timer.isCompleted) {
+        const isLegacyDefault = timer.color && timer.color.toLowerCase() === '#c20078';
+        if (timer.color && !isLegacyDefault) {
+            card.style.boxShadow = `0 0 20px ${timer.color}66`; // 40% alpha
+        } else {
+            card.style.boxShadow = `0 0 20px var(--color-success)`; // completado
+        }
     }
 
     const button = card.querySelector('.control-btn-primary-compact');
@@ -1455,7 +1467,7 @@ elements.form.addEventListener('submit', async (e) => {
 
         // Buscar preset para heredar color e ID
         const presetMatch = AppState.presets.find(p => p.sigla.toUpperCase() === studyType.toUpperCase());
-        const timerColor = presetMatch ? presetMatch.color : '#c20078';
+        const timerColor = presetMatch ? presetMatch.color : null;
 
         let finalStudyType = presetMatch ? presetMatch.sigla : studyType;
         if (currentMode === 'fixed') {
@@ -1929,6 +1941,10 @@ function applyThemeHue(hue) {
     // Gradiente principal (se actualiza automáticamente porque usa var())
     root.style.setProperty('--gradient-primary', `linear-gradient(135deg, hsl(${hue}, 100%, 45%), hsl(${secHue}, 60%, 55%))`);
 
+    // Colores con transparencia para glows
+    root.style.setProperty('--color-primary-glow', `hsla(${hue}, 100%, 45%, 0.3)`);
+    root.style.setProperty('--color-primary-alpha44', `hsla(${hue}, 100%, 45%, 0.26)`);
+
     // Actualizar background gradient (los radial-gradient del fondo)
     const bgGradient = document.querySelector('.background-gradient');
     if (bgGradient) {
@@ -2029,10 +2045,6 @@ window.openDesignModal = () => {
     const modal = document.getElementById('modal-design');
     if (modal) {
         modal.style.display = 'flex';
-        
-        // Marcar el swatch activo
-        updateSwatchSelection(currentDesignHue);
-        
         // Actualizar el color picker con el hue actual
         const picker = document.getElementById('design-custom-color');
         if (picker) picker.value = hueToHex(currentDesignHue);
@@ -2044,32 +2056,13 @@ window.closeDesignModal = () => {
     if (modal) modal.style.display = 'none';
 };
 
-window.selectDesignColor = (hue, swatchEl) => {
-    applyThemeHue(hue);
-    updateSwatchSelection(hue);
-    
-    // Actualizar el color picker
-    const picker = document.getElementById('design-custom-color');
-    if (picker) picker.value = hueToHex(hue);
-};
-
 window.onCustomColorPick = (hexValue) => {
     const hsl = hexToHsl(hexValue);
     applyThemeHue(hsl.h);
-    updateSwatchSelection(hsl.h);
 };
-
-function updateSwatchSelection(hue) {
-    const swatches = document.querySelectorAll('.design-color-swatch');
-    swatches.forEach(sw => {
-        const swHue = parseInt(sw.getAttribute('data-hue'));
-        sw.classList.toggle('active', swHue === hue);
-    });
-}
 
 window.resetTheme = () => {
     applyThemeHue(DEFAULT_THEME_HUE);
-    updateSwatchSelection(DEFAULT_THEME_HUE);
     localStorage.removeItem('theme-hue');
     
     // Actualizar el color picker

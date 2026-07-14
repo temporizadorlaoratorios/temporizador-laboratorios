@@ -180,77 +180,18 @@
             letter-spacing: 0.05em;
         }
 
-        /* Paleta de colores predefinidos */
-        .design-palette {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            justify-content: center;
-            margin-bottom: 25px;
-        }
-        .design-color-swatch {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            position: relative;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        .design-color-swatch:hover {
-            transform: scale(1.15);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
-        .design-color-swatch.active {
-            border-color: #fff;
-            transform: scale(1.15);
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.3), 0 4px 15px rgba(0,0,0,0.4);
-        }
-        .design-color-swatch.active::after {
-            content: '✓';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: 900;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-        }
-
-        /* Selector de color personalizado */
-        .design-custom-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 25px;
-            padding: 15px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
+        /* Selector de color */
         .design-custom-picker {
-            width: 50px;
-            height: 50px;
+            width: 100%;
+            height: 100%;
             border: none;
             background: transparent;
             cursor: pointer;
             padding: 0;
             border-radius: 8px;
-            flex-shrink: 0;
         }
         .design-custom-picker::-webkit-color-swatch-wrapper { padding: 0; }
-        .design-custom-picker::-webkit-color-swatch { border: 2px solid rgba(255,255,255,0.2); border-radius: 8px; }
-        .design-custom-label {
-            color: var(--color-text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-        .design-custom-label strong {
-            color: var(--color-text-primary);
-            display: block;
-            margin-bottom: 2px;
-        }
+        .design-custom-picker::-webkit-color-swatch { border: none; border-radius: 4px; }
 
         /* Barra de preview */
         .design-preview-bar {
@@ -675,25 +616,14 @@
                 <button onclick="closeDesignModal()" class="design-modal-close">×</button>
             </div>
 
-            <p class="design-section-label">Colores predefinidos</p>
-            <div class="design-palette" id="design-palette">
-                <div class="design-color-swatch" data-hue="325" style="background: hsl(325, 100%, 45%);" title="Magenta (original)" onclick="selectDesignColor(325, this)"></div>
-                <div class="design-color-swatch" data-hue="210" style="background: hsl(210, 100%, 45%);" title="Azul" onclick="selectDesignColor(210, this)"></div>
-                <div class="design-color-swatch" data-hue="150" style="background: hsl(150, 80%, 40%);" title="Verde" onclick="selectDesignColor(150, this)"></div>
-                <div class="design-color-swatch" data-hue="25" style="background: hsl(25, 100%, 50%);" title="Naranja" onclick="selectDesignColor(25, this)"></div>
-                <div class="design-color-swatch" data-hue="0" style="background: hsl(0, 85%, 50%);" title="Rojo" onclick="selectDesignColor(0, this)"></div>
-                <div class="design-color-swatch" data-hue="185" style="background: hsl(185, 90%, 45%);" title="Cyan" onclick="selectDesignColor(185, this)"></div>
-                <div class="design-color-swatch" data-hue="270" style="background: hsl(270, 70%, 55%);" title="Violeta" onclick="selectDesignColor(270, this)"></div>
-                <div class="design-color-swatch" data-hue="45" style="background: hsl(45, 90%, 50%);" title="Dorado" onclick="selectDesignColor(45, this)"></div>
-            </div>
-
-            <p class="design-section-label">Color personalizado</p>
-            <div class="design-custom-row">
-                <input type="color" id="design-custom-color" class="design-custom-picker" value="#e6007a" oninput="onCustomColorPick(this.value)">
-                <div class="design-custom-label">
-                    <strong>Elegí tu propio color</strong>
-                    Tocá el cuadrado para abrir el selector
+            <p class="design-section-label">Color del Tema Principal</p>
+            <div style="margin-bottom: 25px;">
+                <div class="color-picker-wrapper" style="height: 60px; padding: 5px;">
+                    <input type="color" id="design-custom-color" class="color-picker-input" value="#e6007a" oninput="onCustomColorPick(this.value)">
                 </div>
+                <p style="font-size: 0.8rem; color: var(--color-text-muted); text-align: center; margin-top: 10px;">
+                    Tocá el recuadro para elegir el color que te guste.
+                </p>
             </div>
 
             <div class="design-preview-bar" id="design-preview-bar" style="background: var(--gradient-primary);"></div>
