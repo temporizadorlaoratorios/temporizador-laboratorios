@@ -845,7 +845,20 @@ async function loadPresets() {
         .order('sigla', { ascending: true });
     
     if (!error) {
-        AppState.presets = presetsData || [];
+        // --- LÓGICA DE TEMA SINCRONIZADO EN LA NUBE ---
+        const themeConfig = (presetsData || []).find(p => p.sigla === '__THEME__');
+        if (themeConfig) {
+            const hue = parseInt(themeConfig.color);
+            if (!isNaN(hue) && hue >= 0 && hue <= 360) {
+                applyThemeHue(hue);
+                localStorage.setItem(getThemeKey(), hue.toString());
+            }
+        } else if (!localStorage.getItem(getThemeKey())) {
+            applyThemeHue(DEFAULT_THEME_HUE);
+        }
+        // ----------------------------------------------
+
+        AppState.presets = (presetsData || []).filter(p => p.sigla !== '__THEME__');
         updatePresetsDatalist();
         if (document.getElementById('modal-presets').style.display === 'flex') {
             renderPresetsList();
@@ -2082,7 +2095,32 @@ window.resetTheme = () => {
     if (picker) picker.value = hueToHex(DEFAULT_THEME_HUE);
 };
 
-window.saveAndCloseDesign = () => {
+window.saveAndCloseDesign = async () => {
     localStorage.setItem(getThemeKey(), currentDesignHue.toString());
     closeDesignModal();
+
+    try {
+        // Guardar el tema en Supabase como un preset oculto (__THEME__)
+        const { data: existing } = await sb.from('ajustes_tiempo')
+            .select('id')
+            .eq('laboratorio_id', labId)
+            .eq('sigla', '__THEME__');
+            
+        if (existing && existing.length > 0) {
+            await sb.from('ajustes_tiempo').update({ color: currentDesignHue.toString() }).eq('id', existing[0].id);
+        } else {
+            await sb.from('ajustes_tiempo').insert({
+                laboratorio_id: labId,
+                sigla: '__THEME__',
+                descripcion: 'Configuración de Color del Tema',
+                tipo: 'duration',
+                horas: 0,
+                minutos: 0,
+                segundos: 0,
+                color: currentDesignHue.toString()
+            });
+        }
+    } catch (e) {
+        console.error('Error sincronizando el tema con la base de datos:', e);
+    }
 };
