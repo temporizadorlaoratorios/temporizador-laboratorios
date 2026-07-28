@@ -540,7 +540,10 @@ function startContinuousAlarm(timerId) {
     
     // UI Actualización
     const card = document.getElementById(`timer-${timerId}`);
-    if (card) card.classList.add('alarm-active');
+    if (card) {
+        card.classList.add('alarm-active');
+        card.style.boxShadow = ''; // Evita conflictos visuales con la animación
+    }
 
     // Registrar alarma en Web Worker para evitar el throttling del navegador en background
     backgroundWorker.postMessage({ type: 'start_alarm', id: timerId });
@@ -606,6 +609,9 @@ function stopAlarm(timerId) {
         card.classList.remove('alarm-active');
         const stopBtn = card.querySelector('.control-btn-stop-compact');
         if (stopBtn) stopBtn.remove();
+        
+        // Restaurar el estilo original de completado (ej. color verde)
+        updateTimerDisplay(timerId);
     }
 
     // Cerrar notificaciones en la PWA correspondientes a esta alarma
@@ -1187,11 +1193,15 @@ function updateTimerDisplay(timerId) {
     card.classList.toggle('completed', timer.isCompleted);
     
     if (timer.isCompleted) {
-        const isLegacyDefault = timer.color && timer.color.toLowerCase() === '#c20078';
-        if (timer.color && !isLegacyDefault) {
-            card.style.boxShadow = `0 0 20px ${timer.color}66`; // 40% alpha
+        if (AppState.activeAlarms[timer.id]) {
+            card.style.boxShadow = ''; // Deja que la animación CSS .alarmPulse controle el borde
         } else {
-            card.style.boxShadow = `0 0 20px var(--color-success)`; // completado
+            const isLegacyDefault = timer.color && timer.color.toLowerCase() === '#c20078';
+            if (timer.color && !isLegacyDefault) {
+                card.style.boxShadow = `0 0 20px ${timer.color}66`; // 40% alpha
+            } else {
+                card.style.boxShadow = `0 0 20px var(--color-success)`; // completado
+            }
         }
     }
 
