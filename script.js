@@ -553,7 +553,13 @@ function startContinuousAlarm(timerId) {
     repairAudioKeepalive();
 }
 
+let lastBeepTime = 0;
+
 function playBeepTone() {
+    const now = Date.now();
+    if (now - lastBeepTime < 1200) return; // Prevenir superposición de sonido (cooldown de 1.2s)
+    lastBeepTime = now;
+
     try {
         const audioContext = getAudioContext();
         if (audioContext.state === 'suspended') {
