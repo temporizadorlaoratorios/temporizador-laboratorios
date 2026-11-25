@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Temporizador INDABI</title>
+    <title>Acceso & Prueba 30 Días - Temporizador Sincronizado</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="icon_transparente.png">
     <link rel="shortcut icon" href="icono.ico">
@@ -17,63 +17,71 @@
     <link rel="apple-touch-icon" href="icon_transparente.png">
     <style>
         body {
-            /* Se apoya en style.css (Inter, color-bg-primary, etc) */
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            overflow: hidden;
+            padding: 20px 14px;
+            box-sizing: border-box;
+            overflow-y: auto;
         }
-        
-        /* Contenedor del formulario estilo tarjeta */
+
         .login-container {
             background: var(--color-bg-secondary);
-            padding: 2.5rem 2rem;
+            padding: 2.2rem 1.9rem;
             border-radius: var(--radius-md);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.65);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
             text-align: center;
             position: relative;
             z-index: 10;
         }
 
-        .login-container img {
-            max-width: 180px;
-            margin-bottom: 1.5rem;
+        .login-container img.brand-logo {
+            max-width: 155px;
+            margin-bottom: 1.1rem;
             filter: drop-shadow(0 0 10px rgba(194, 0, 120, 0.3));
         }
 
         h2 {
             color: var(--color-text-primary);
-            margin-bottom: 1.5rem;
+            margin: 0 0 0.4rem 0;
             font-weight: 700;
+            font-size: 1.45rem;
+        }
+
+        .subtitle-muted {
+            color: var(--color-text-muted);
+            font-size: 0.88rem;
+            margin: 0 0 1.3rem 0;
+            line-height: 1.45;
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.15rem;
             text-align: left;
             position: relative;
         }
 
         label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
             color: var(--color-text-secondary);
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
         }
 
         input {
             width: 100%;
-            padding: 12px 14px;
+            padding: 11px 14px;
             background: var(--color-bg-tertiary);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: var(--radius-sm);
             color: var(--color-text-primary);
-            font-size: 1rem;
+            font-size: 0.96rem;
             font-family: var(--font-main);
             box-sizing: border-box;
             transition: all 0.2s;
@@ -89,14 +97,13 @@
             color: var(--color-text-muted);
         }
 
-        /* Botón de ojito para la contraseña */
         .toggle-password {
             position: absolute;
             right: 12px;
-            top: 36px;
+            top: 33px;
             background: transparent;
             border: none;
-            color: var(--color-primary); /* Fucsia clásico a tono con el logo */
+            color: var(--color-primary);
             cursor: pointer;
             width: 24px;
             height: 24px;
@@ -120,16 +127,19 @@
 
         .btn-submit {
             width: 100%;
-            padding: 14px;
+            padding: 13px;
             background: var(--gradient-primary);
             color: white;
             border: none;
             border-radius: var(--radius-sm);
-            font-size: 1.1rem;
+            font-size: 1.02rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
-            margin-top: 0.5rem;
+            margin-top: 0.4rem;
+            text-decoration: none;
+            display: inline-block;
+            box-sizing: border-box;
         }
 
         .btn-submit:hover {
@@ -137,57 +147,300 @@
             box-shadow: 0 4px 15px rgba(194, 0, 120, 0.4);
         }
 
-        #error-message {
+        .btn-submit:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-cyan {
+            background: linear-gradient(90deg, #0891b2, #0d9488);
+        }
+        .btn-cyan:hover {
+            box-shadow: 0 4px 18px rgba(8, 145, 178, 0.45);
+        }
+
+        .btn-outline {
+            width: 100%;
+            padding: 11px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.6rem;
+            text-decoration: none;
+            display: inline-block;
+            box-sizing: border-box;
+        }
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.28);
+        }
+
+        .alert-box {
             color: var(--color-danger);
             margin-top: 1rem;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 500;
             display: none;
             background: rgba(255, 0, 0, 0.1);
-            padding: 10px;
+            padding: 10px 12px;
             border-radius: var(--radius-sm);
-            border: 1px solid rgba(255, 0, 0, 0.2);
+            border: 1px solid rgba(255, 0, 0, 0.25);
+            line-height: 1.45;
+        }
+
+        .switch-mode-footer {
+            margin-top: 1.35rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+        }
+
+        .link-btn {
+            background: none;
+            border: none;
+            color: #38bdf8;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.86rem;
+            padding: 0;
+            text-decoration: underline;
+        }
+        .link-btn:hover {
+            color: #7dd3fc;
+        }
+
+        /* Selector de Plan en Registro */
+        .plan-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 1.25rem;
+            background: rgba(0,0,0,0.3);
+            padding: 5px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .plan-tab-btn {
+            padding: 10px 8px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1.25;
+        }
+
+        .plan-tab-btn.active-trial {
+            background: rgba(230, 0, 122, 0.18);
+            border-color: var(--color-primary);
+            color: #ffffff;
+            box-shadow: 0 0 14px rgba(230, 0, 122, 0.25);
+        }
+
+        .plan-tab-btn.active-paid {
+            background: rgba(8, 145, 178, 0.22);
+            border-color: #22d3ee;
+            color: #ffffff;
+            box-shadow: 0 0 14px rgba(34, 211, 238, 0.25);
+        }
+
+        .plan-info-pill {
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            line-height: 1.45;
+            margin-bottom: 1.15rem;
+            text-align: left;
+        }
+        .pill-trial {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #fde68a;
+        }
+        .pill-paid {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.35);
+            color: #a5f3fc;
+        }
+
+        .expired-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
     </style>
 </head>
 <body>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <div class="background-gradient"></div>
+
     <div class="login-container">
-        <img src="logo.png" alt="Logo INDABI">
-        <h2>Acceso Laboratorios</h2>
-        <form id="login-form">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" required placeholder="tu@laboratorio.com">
-            </div>
-            <div class="form-group">
-                <label for="password">Contraseña</label>
-                <input type="password" id="password" required placeholder="••••••••">
-                <button type="button" class="toggle-password" id="toggle-password" title="Mostrar/Ocultar contraseña">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
-                        <circle cx="12" cy="12" r="3"/>
-                    </svg>
+        <img src="logo.png" alt="Logo Temporizador" class="brand-logo">
+
+        <!-- ==================== VISTA 1: LOGIN NORMAL ==================== -->
+        <div id="view-login">
+            <h2>Acceso Clientes</h2>
+            <p class="subtitle-muted">Ingresá con el usuario de tu laboratorio o empresa</p>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required placeholder="tu@laboratorio.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                    <button type="button" class="toggle-password" id="toggle-password" title="Mostrar/Ocultar contraseña">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                </div>
+                <button type="submit" class="btn-submit">Entrar</button>
+                <p id="error-message" class="alert-box">Credenciales incorrectas o cuenta inactiva.</p>
+            </form>
+
+            <div class="switch-mode-footer">
+                ¿Sos nuevo cliente?<br>
+                <button type="button" class="link-btn" id="btn-go-register" style="margin-top:4px;">
+                    🎁 Crear usuario gratis por 30 días o contratar plan →
                 </button>
             </div>
-            <button type="submit" class="btn-submit">Entrar</button>
-            <p id="error-message">Credenciales incorrectas o cuenta inactiva.</p>
-        </form>
+        </div>
+
+        <!-- ==================== VISTA 2: SECCIÓN ESPECIAL NUEVO CLIENTE (PRUEBA 30 DÍAS O PAGO) ==================== -->
+        <div id="view-register" style="display: none;">
+            <h2>Alta de Nuevo Usuario</h2>
+            <p class="subtitle-muted">Elegí probar 30 días sin cargo o adquirir tu suscripción definitiva</p>
+
+            <div class="plan-tabs">
+                <button type="button" id="tab-trial" class="plan-tab-btn active-trial">
+                    🎁 Prueba Gratis<br><span style="font-weight:500;font-size:0.73rem;">30 días completos</span>
+                </button>
+                <button type="button" id="tab-paid" class="plan-tab-btn">
+                    💎 Plan Pago<br><span style="font-weight:500;font-size:0.73rem;">Abonar y activar</span>
+                </button>
+            </div>
+
+            <div id="plan-desc-box" class="plan-info-pill pill-trial">
+                ✓ Acceso inmediato por <strong>30 días gratis</strong> (hasta 3 PCs sincronizadas). Al finalizar podrás abonar manteniendo <strong>este mismo usuario</strong>.
+            </div>
+
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="reg-lab">Nombre del Laboratorio o Empresa</label>
+                    <input type="text" id="reg-lab" required placeholder="Ej: Laboratorio Central">
+                </div>
+                <div class="form-group">
+                    <label for="reg-phone">WhatsApp / Teléfono de Contacto</label>
+                    <input type="tel" id="reg-phone" required placeholder="Ej: +54 9 11 1234-5678">
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Email de Acceso (será tu usuario)</label>
+                    <input type="email" id="reg-email" required placeholder="contacto@tulaboratorio.com">
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Crear Contraseña</label>
+                    <input type="password" id="reg-password" required minlength="4" placeholder="Mínimo 4 caracteres">
+                    <button type="button" class="toggle-password" id="toggle-reg-password" title="Mostrar/Ocultar contraseña">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <button type="submit" id="reg-submit-btn" class="btn-submit">
+                    🚀 Crear Usuario y Empezar 30 Días Gratis
+                </button>
+                <p id="reg-message" class="alert-box"></p>
+            </form>
+
+            <div class="switch-mode-footer">
+                ¿Ya tenés tu usuario creado?
+                <button type="button" class="link-btn" id="btn-back-login">Iniciar sesión →</button>
+            </div>
+        </div>
+
+        <!-- ==================== VISTA 3: CUENTA CREADA PARA PAGO ==================== -->
+        <div id="view-paid-ready" style="display: none;">
+            <div style="font-size: 2.6rem; margin-bottom: 8px;">✅</div>
+            <h2>¡Tu usuario ya fue reservado!</h2>
+            <p class="subtitle-muted" id="paid-ready-desc">
+                Creamos tu cuenta para que conserves tu mismo usuario y contraseña de forma permanente.
+            </p>
+            <a id="paid-go-planes-btn" href="#" target="_blank" rel="noreferrer" class="btn-submit btn-cyan">
+                💳 Ir a Planes y Pagos para Abonar →
+            </a>
+            <button type="button" id="paid-enter-app-btn" class="btn-outline">
+                Entrar al Temporizador mientras se acredita →
+            </button>
+        </div>
+
+        <!-- ==================== VISTA 4: BLOQUEO POR FIN DE PRUEBA DE 30 DÍAS ==================== -->
+        <div id="view-expired" style="display: none;">
+            <div class="expired-badge">⏳ Período de Prueba Finalizado</div>
+            <h2>Tus 30 días de prueba concluyeron</h2>
+            <p class="subtitle-muted" id="expired-user-summary" style="margin-bottom: 1rem;">
+                Tu usuario y todas las configuraciones de tu laboratorio siguen guardadas.
+            </p>
+            <div class="plan-info-pill pill-paid" style="margin-bottom: 1.2rem;">
+                🔑 <strong>Conservás el mismo usuario:</strong> al abonar tu suscripción se reactiva automáticamente esta misma cuenta sin perder tus ajustes ni historial.
+            </div>
+            <a id="expired-pay-btn" href="#" class="btn-submit btn-cyan">
+                💳 Abonar y Adquirir el Producto →
+            </a>
+            <a id="expired-wa-btn" href="#" target="_blank" rel="noreferrer" class="btn-outline">
+                💬 Ya aboné / Enviar comprobante por WhatsApp
+            </a>
+            <div class="switch-mode-footer">
+                <button type="button" class="link-btn" id="btn-expired-back">← Volver al inicio de sesión</button>
+            </div>
+        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // ==================== DETECCIÓN PWA ACTIVA ====================
-            const IS_PWA = window.matchMedia('(display-mode: standalone)').matches 
+            const urlParams = new URLSearchParams(window.location.search);
+            const IS_PWA = window.matchMedia('(display-mode: standalone)').matches
                         || window.navigator.standalone === true
-                        || new URLSearchParams(window.location.search).get('mode') === 'pwa';
+                        || urlParams.get('mode') === 'pwa';
+
+            const viewLogin = document.getElementById('view-login');
+            const viewRegister = document.getElementById('view-register');
+            const viewPaidReady = document.getElementById('view-paid-ready');
+            const viewExpired = document.getElementById('view-expired');
 
             const errorMsg = document.getElementById('error-message');
             const loginForm = document.getElementById('login-form');
             const submitBtn = loginForm.querySelector('.btn-submit');
 
-            // Función para verificar si la PWA está viva
+            function showOnlyView(target) {
+                [viewLogin, viewRegister, viewPaidReady, viewExpired].forEach(v => {
+                    v.style.display = (v === target) ? 'block' : 'none';
+                });
+            }
+
+            // ==================== DETECCIÓN PWA ACTIVA ====================
             function isPwaAlive() {
                 if (IS_PWA) return false;
                 const lastHeartbeat = parseInt(localStorage.getItem('pwa-active') || '0');
@@ -202,8 +455,6 @@
                 errorMsg.style.color = '#ffb347';
                 if (submitBtn) {
                     submitBtn.disabled = true;
-                    submitBtn.style.opacity = '0.5';
-                    submitBtn.style.cursor = 'not-allowed';
                 }
             }
 
@@ -211,12 +462,9 @@
                 errorMsg.style.display = 'none';
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.style.opacity = '1';
-                    submitBtn.style.cursor = 'pointer';
                 }
             }
 
-            // Si soy PWA, establecer heartbeat
             if (IS_PWA) {
                 localStorage.setItem('pwa-active', Date.now().toString());
                 setInterval(() => {
@@ -230,102 +478,324 @@
                         localStorage.setItem('pwa-active', Date.now().toString());
                     }
                 });
-            }
-
-            // Si soy navegador, verificar y escuchar
-            if (!IS_PWA) {
-                // Check inicial
+            } else {
                 if (isPwaAlive()) showPwaWarning();
-
-                // Escuchar cambios en localStorage (storage event se dispara en OTRAS ventanas)
                 window.addEventListener('storage', (e) => {
                     if (e.key === 'pwa-active') {
-                        if (e.newValue) {
-                            showPwaWarning();
-                        } else {
-                            hidePwaWarning();
-                        }
+                        e.newValue ? showPwaWarning() : hidePwaWarning();
                     }
                 });
-
-                // Fallback: verificación periódica
                 setInterval(() => {
                     if (isPwaAlive()) {
                         showPwaWarning();
                     } else if (errorMsg.style.color === 'rgb(255, 179, 71)') {
-                        // Solo ocultar si el mensaje era el de PWA (no un error de login)
                         hidePwaWarning();
                     }
                 }, 5000);
             }
 
-            // Si vino redirigido con reason=pwa-active
-            const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('reason') === 'pwa-active') {
                 showPwaWarning();
             }
 
-            // Inicializar Supabase
+            // ==================== SUPABASE INIT ====================
             const supabaseUrl = 'https://qhjrqfrsphctbdjubxpv.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoanJxZnJzcGhjdGJkanVieHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjg5NzAsImV4cCI6MjA5MDgwNDk3MH0.fLF8SGXXE7BdbdzUHo7GiBM58BbZkUN89N8Cl1KnEHk';
-            
+
             let sb;
             try {
                 sb = window.supabase.createClient(supabaseUrl, supabaseKey);
-            } catch(err) {
+            } catch (err) {
                 console.error('Error inicializando Supabase:', err);
                 return;
             }
 
-            // Lógica para mostrar/ocultar contraseña
-            const togglePassword = document.getElementById('toggle-password');
-            const passwordInput = document.getElementById('password');
+            // Configuración global de URL Planes y Pagos + WhatsApp
+            let billingConfig = {
+                planesUrl: urlParams.get('planes_url') || localStorage.getItem('bendark-planes-url') || 'http://localhost:3010/#planes',
+                whatsappNumber: '5491100000000'
+            };
 
-            const eyeSvg = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-            `;
-            const eyeSlashSvg = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
-                    <line x1="2" x2="22" y1="2" y2="22"/>
-                </svg>
-            `;
+            if (urlParams.get('planes_url')) {
+                localStorage.setItem('bendark-planes-url', urlParams.get('planes_url'));
+            }
 
-            togglePassword.addEventListener('click', () => {
-                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                passwordInput.setAttribute('type', type);
-                togglePassword.innerHTML = type === 'password' ? eyeSvg : eyeSlashSvg;
-            });
+            try {
+                const { data: cfgRow } = await sb
+                    .from('laboratorios')
+                    .select('logo')
+                    .eq('id', 'bendark-billing-config')
+                    .maybeSingle();
+                if (cfgRow && cfgRow.logo) {
+                    const parsedCfg = JSON.parse(cfgRow.logo);
+                    if (parsedCfg.planesUrl && !urlParams.get('planes_url')) {
+                        billingConfig.planesUrl = parsedCfg.planesUrl;
+                    }
+                    if (parsedCfg.whatsappNumber) {
+                        billingConfig.whatsappNumber = parsedCfg.whatsappNumber;
+                    }
+                }
+            } catch (e) {}
 
-            // Lógica de login
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            function buildUpgradeLink(customPlanesUrl, labName, email) {
+                const base = customPlanesUrl || billingConfig.planesUrl || 'http://localhost:3010/#planes';
+                try {
+                    const hashIndex = base.indexOf('#');
+                    const cleanBase = hashIndex > -1 ? base.slice(0, hashIndex) : base;
+                    const hashPart = hashIndex > -1 ? base.slice(hashIndex) : '#planes';
+                    const u = new URL(cleanBase);
+                    if (labName) u.searchParams.set('upgrade_lab', labName);
+                    if (email) u.searchParams.set('upgrade_email', email);
+                    return u.toString() + hashPart;
+                } catch (e) {
+                    return base;
+                }
+            }
 
-                // === PRE-ACTIVAR AUDIO CON EL GESTO DEL USUARIO ===
-                // El clic en "Entrar" es un gesto válido para Chrome.
-                // Aprovechamos para desbloquear el audio ANTES de redirigir.
+            function buildWhatsappLink(labName, email) {
+                const msg = `Hola BENDARK, quiero activar el plan definitivo del Temporizador Sincronizado manteniendo mi usuario (${labName || 'Laboratorio'} - ${email || ''}).`;
+                return `https://wa.me/${billingConfig.whatsappNumber}?text=${encodeURIComponent(msg)}`;
+            }
+
+            // ==================== MOSTRAR / OCULTAR CONTRASEÑAS ====================
+            const eyeSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>`;
+            const eyeSlashSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`;
+
+            function wirePasswordToggle(btnId, inputId) {
+                const btn = document.getElementById(btnId);
+                const inp = document.getElementById(inputId);
+                if (!btn || !inp) return;
+                btn.addEventListener('click', () => {
+                    const type = inp.getAttribute('type') === 'password' ? 'text' : 'password';
+                    inp.setAttribute('type', type);
+                    btn.innerHTML = type === 'password' ? eyeSvg : eyeSlashSvg;
+                });
+            }
+            wirePasswordToggle('toggle-password', 'password');
+            wirePasswordToggle('toggle-reg-password', 'reg-password');
+
+            function primeAudioAndNotifications() {
                 try {
                     const preAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
                     preAudio.volume = 0.01;
                     preAudio.play().then(() => {
                         preAudio.pause();
                         sessionStorage.setItem('audio-primed', 'true');
-                        console.log('🔊 Audio pre-activado desde login');
                     }).catch(() => {});
-                    
-                    // También solicitar permisos de notificación
                     if ('Notification' in window && Notification.permission === 'default') {
                         Notification.requestPermission();
                     }
-                } catch(e) {}
+                } catch (e) {}
+            }
 
-                // BLOQUEO: No permitir login desde navegador si la PWA está activa
+            function showExpiredScreen(labNombre, email, customPlanesUrl) {
+                document.getElementById('expired-user-summary').innerHTML =
+                    `La prueba gratuita de 30 días para <strong>${labNombre}</strong> (<span style="font-family:var(--font-mono)">${email}</span>) llegó a su fin.`;
+                document.getElementById('expired-pay-btn').href = buildUpgradeLink(customPlanesUrl, labNombre, email);
+                document.getElementById('expired-wa-btn').href = buildWhatsappLink(labNombre, email);
+                showOnlyView(viewExpired);
+            }
+
+            // ==================== NAVEGACIÓN ENTRE VISTAS ====================
+            let selectedRegMode = 'trial'; // 'trial' | 'paid'
+            const tabTrial = document.getElementById('tab-trial');
+            const tabPaid = document.getElementById('tab-paid');
+            const planDescBox = document.getElementById('plan-desc-box');
+            const regSubmitBtn = document.getElementById('reg-submit-btn');
+            const regMsg = document.getElementById('reg-message');
+
+            function setRegisterMode(mode) {
+                selectedRegMode = mode;
+                regMsg.style.display = 'none';
+                if (mode === 'trial') {
+                    tabTrial.className = 'plan-tab-btn active-trial';
+                    tabPaid.className = 'plan-tab-btn';
+                    planDescBox.className = 'plan-info-pill pill-trial';
+                    planDescBox.innerHTML = '✓ Acceso inmediato por <strong>30 días gratis</strong> (hasta 3 PCs en red). Al cumplir los 30 días podrás abonar manteniendo <strong>este mismo usuario</strong>.';
+                    regSubmitBtn.className = 'btn-submit';
+                    regSubmitBtn.textContent = '🚀 Crear Usuario y Empezar 30 Días Gratis';
+                } else {
+                    tabTrial.className = 'plan-tab-btn';
+                    tabPaid.className = 'plan-tab-btn active-paid';
+                    planDescBox.className = 'plan-info-pill pill-paid';
+                    planDescBox.innerHTML = '💎 Creás tu usuario definitivo ahora mismo y pasás directo a <strong>Planes y Pagos</strong> para abonar tu suscripción.';
+                    regSubmitBtn.className = 'btn-submit btn-cyan';
+                    regSubmitBtn.textContent = '💳 Crear Usuario y Continuar al Pago →';
+                }
+            }
+
+            tabTrial.addEventListener('click', () => setRegisterMode('trial'));
+            tabPaid.addEventListener('click', () => setRegisterMode('paid'));
+
+            document.getElementById('btn-go-register').addEventListener('click', () => {
+                setRegisterMode('trial');
+                showOnlyView(viewRegister);
+            });
+            document.getElementById('btn-back-login').addEventListener('click', () => {
+                showOnlyView(viewLogin);
+            });
+            document.getElementById('btn-expired-back').addEventListener('click', () => {
+                showOnlyView(viewLogin);
+            });
+
+            // Abrir directamente la sección especial si viene desde "Probar Temporizador" (?registro=prueba o ?registro=pago)
+            const registroParam = urlParams.get('registro');
+            if (registroParam === 'prueba' || registroParam === 'trial') {
+                setRegisterMode('trial');
+                showOnlyView(viewRegister);
+            } else if (registroParam === 'pago' || registroParam === 'paid') {
+                setRegisterMode('paid');
+                showOnlyView(viewRegister);
+            }
+
+            // ==================== ALTA AUTOMÁTICA (PRUEBA 30 DÍAS O PAGO) ====================
+            let pendingSessionRedirect = false;
+            document.getElementById('paid-enter-app-btn').addEventListener('click', () => {
+                if (pendingSessionRedirect) {
+                    window.location.href = 'index.html';
+                }
+            });
+
+            document.getElementById('register-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                primeAudioAndNotifications();
+
+                const nombreLab = document.getElementById('reg-lab').value.trim();
+                const phone = document.getElementById('reg-phone').value.trim();
+                const email = document.getElementById('reg-email').value.trim().toLowerCase();
+                const password = document.getElementById('reg-password').value;
+
+                if (!nombreLab || !email || password.length < 4) {
+                    regMsg.textContent = 'Completá todos los campos (contraseña de al menos 4 caracteres).';
+                    regMsg.style.display = 'block';
+                    return;
+                }
+
+                regSubmitBtn.disabled = true;
+                regMsg.style.display = 'none';
+
+                try {
+                    // Verificar si el email ya existe
+                    const { data: existingProfiles, error: checkErr } = await sb
+                        .from('perfiles')
+                        .select('*')
+                        .eq('email', email);
+
+                    if (checkErr) throw checkErr;
+
+                    if (existingProfiles && existingProfiles.length > 0) {
+                        const existingUser = existingProfiles[0];
+                        // Si ya tenía cuenta a prueba y eligió "Plan Pago" con su misma clave, conservar ese mismo usuario y derivar a pago
+                        if (selectedRegMode === 'paid' && existingUser.password === password && existingUser.laboratorio_id) {
+                            const metaId = `plan-meta-${existingUser.laboratorio_id}`;
+                            const { data: oldMetaRow } = await sb.from('laboratorios').select('logo').eq('id', metaId).maybeSingle();
+                            let prevMeta = {};
+                            try { prevMeta = oldMetaRow?.logo ? JSON.parse(oldMetaRow.logo) : {}; } catch {}
+
+                            const updatedMeta = {
+                                ...prevMeta,
+                                planType: 'paid_pending',
+                                phone: phone || prevMeta.phone || '',
+                                email,
+                                planesUrl: billingConfig.planesUrl,
+                                adminNotified: false,
+                                eventType: 'nuevo_pago',
+                                paymentRequestedAt: new Date().toISOString()
+                            };
+                            await sb.from('laboratorios').upsert({
+                                id: metaId,
+                                nombre: `Plan Meta ${existingUser.laboratorio_id}`,
+                                max_pcs: 1,
+                                activo: true,
+                                logo: JSON.stringify(updatedMeta)
+                            });
+
+                            window.location.href = buildUpgradeLink(billingConfig.planesUrl, nombreLab, email);
+                            return;
+                        }
+
+                        regMsg.textContent = 'Este email ya tiene un usuario registrado. Iniciá sesión desde "Acceso Clientes".';
+                        regMsg.style.display = 'block';
+                        regSubmitBtn.disabled = false;
+                        return;
+                    }
+
+                    const now = Date.now();
+                    const newLabId = `lab-${now}`;
+                    const newUserId = `user-${now}`;
+                    const trialDays = 30;
+                    const trialEndsAt = new Date(now + trialDays * 24 * 60 * 60 * 1000).toISOString();
+
+                    const { error: labErr } = await sb.from('laboratorios').insert({
+                        id: newLabId,
+                        nombre: nombreLab,
+                        max_pcs: 3,
+                        activo: true
+                    });
+                    if (labErr) throw labErr;
+
+                    const { error: profErr } = await sb.from('perfiles').insert({
+                        id: newUserId,
+                        email,
+                        password,
+                        rol: 'user',
+                        laboratorio_id: newLabId
+                    });
+                    if (profErr) throw profErr;
+
+                    const metaPayload = {
+                        planType: selectedRegMode === 'trial' ? 'trial' : 'paid_pending',
+                        createdAt: new Date(now).toISOString(),
+                        trialDays,
+                        trialEndsAt,
+                        phone,
+                        email,
+                        planesUrl: billingConfig.planesUrl,
+                        adminNotified: false,
+                        eventType: selectedRegMode === 'trial' ? 'nuevo_prueba' : 'nuevo_pago'
+                    };
+
+                    await sb.from('laboratorios').insert({
+                        id: `plan-meta-${newLabId}`,
+                        nombre: `Plan Meta ${nombreLab}`,
+                        max_pcs: 1,
+                        activo: true,
+                        logo: JSON.stringify(metaPayload)
+                    });
+
+                    // Dejar sesión iniciada con su nuevo usuario
+                    localStorage.setItem('sb-token', newUserId);
+                    localStorage.setItem('lab-id', newLabId);
+                    localStorage.setItem('lab-nombre', nombreLab);
+                    localStorage.setItem('lab-email', email);
+                    localStorage.removeItem('lab-logo');
+
+                    if (selectedRegMode === 'trial') {
+                        window.location.href = 'index.html';
+                    } else {
+                        pendingSessionRedirect = true;
+                        const payUrl = buildUpgradeLink(billingConfig.planesUrl, nombreLab, email);
+                        document.getElementById('paid-go-planes-btn').href = payUrl;
+                        document.getElementById('paid-ready-desc').innerHTML =
+                            `Tu usuario <strong>${email}</strong> para <strong>${nombreLab}</strong> ya está creado. Hacé clic abajo para elegir tu medio de pago y dejarlo activo de forma definitiva.`;
+                        showOnlyView(viewPaidReady);
+                    }
+                } catch (err) {
+                    console.error('Error creando cuenta:', err);
+                    regMsg.textContent = 'No se pudo crear la cuenta en este momento. Intentá nuevamente.';
+                    regMsg.style.display = 'block';
+                } finally {
+                    regSubmitBtn.disabled = false;
+                }
+            });
+
+            // ==================== LOGIN EXISTENTE + CONTROL DE 30 DÍAS ====================
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                primeAudioAndNotifications();
+
                 if (isPwaAlive()) {
                     errorMsg.textContent = '📱 No podés iniciar sesión desde el navegador mientras la app PWA está abierta. Usá la aplicación instalada.';
                     errorMsg.style.display = 'block';
@@ -335,7 +805,7 @@
                     return;
                 }
 
-                const email = document.getElementById('email').value;
+                const email = document.getElementById('email').value.trim();
                 const password = document.getElementById('password').value;
 
                 try {
@@ -346,39 +816,55 @@
                         .eq('password', password);
 
                     if (error) {
-                        console.error('Supabase error:', error);
                         errorMsg.textContent = 'Error de conexión con la base de datos.';
                         errorMsg.style.display = 'block';
-                        errorMsg.style.background = 'rgba(255, 0, 0, 0.1)';
-                        errorMsg.style.borderColor = 'rgba(255, 0, 0, 0.2)';
-                        errorMsg.style.color = 'var(--color-danger)';
                         return;
                     }
 
                     if (perfiles && perfiles.length > 0) {
                         const user = perfiles[0];
-                        localStorage.setItem('sb-token', user.id);
-                        localStorage.setItem('lab-id', user.laboratorio_id || 'super-admin');
-                        
+
                         if (user.laboratorio_id && user.laboratorio_id !== 'super-admin') {
                             const { data: labs } = await sb
                                 .from('laboratorios')
-                                .select('nombre, logo, activo')
-                                .eq('id', user.laboratorio_id);
-                                
-                            if (labs && labs.length > 0) {
-                                if (!labs[0].activo) {
+                                .select('id, nombre, logo, activo')
+                                .in('id', [user.laboratorio_id, `plan-meta-${user.laboratorio_id}`]);
+
+                            const mainLab = (labs || []).find(l => l.id === user.laboratorio_id);
+                            const metaRow = (labs || []).find(l => l.id === `plan-meta-${user.laboratorio_id}`);
+
+                            if (mainLab) {
+                                // Verificar si es cuenta a prueba y ya vencieron sus 30 días
+                                if (metaRow && metaRow.logo) {
+                                    try {
+                                        const meta = JSON.parse(metaRow.logo);
+                                        if (meta.planType === 'trial' && meta.trialEndsAt) {
+                                            const endsAtMs = new Date(meta.trialEndsAt).getTime();
+                                            if (Date.now() >= endsAtMs) {
+                                                showExpiredScreen(mainLab.nombre || 'tu laboratorio', user.email, meta.planesUrl);
+                                                return;
+                                            }
+                                        }
+                                    } catch (parseErr) {}
+                                }
+
+                                if (!mainLab.activo) {
                                     errorMsg.textContent = 'Este laboratorio está inactivo.';
                                     errorMsg.style.display = 'block';
                                     return;
                                 }
-                                localStorage.setItem('lab-logo', labs[0].logo || '');
-                                localStorage.setItem('lab-nombre', labs[0].nombre || 'Laboratorio');
+
+                                localStorage.setItem('lab-logo', mainLab.logo || '');
+                                localStorage.setItem('lab-nombre', mainLab.nombre || 'Laboratorio');
                             }
                         } else {
                             localStorage.setItem('lab-nombre', 'Super Admin');
                         }
-                        
+
+                        localStorage.setItem('sb-token', user.id);
+                        localStorage.setItem('lab-id', user.laboratorio_id || 'super-admin');
+                        localStorage.setItem('lab-email', user.email || '');
+
                         if (user.rol === 'super_admin' || user.laboratorio_id === 'super-admin') {
                             window.location.href = 'superadmin.html';
                         } else {
@@ -403,4 +889,3 @@
     </script>
 </body>
 </html>
-
