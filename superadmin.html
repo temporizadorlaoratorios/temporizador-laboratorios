@@ -610,6 +610,28 @@
             }
         }
 
+        function formatOnlyDate(iso) {
+            if (!iso) return '';
+            try {
+                return new Date(iso).toLocaleDateString('es-AR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric'
+                });
+            } catch (e) {
+                return iso;
+            }
+        }
+
+        function resolveCreatedAtIso(labIdStr, meta) {
+            if (meta && meta.createdAt) return meta.createdAt;
+            if (labIdStr && labIdStr.startsWith('lab-')) {
+                const ts = parseInt(labIdStr.replace('lab-', ''), 10);
+                if (!isNaN(ts) && ts > 1000000000000) {
+                    return new Date(ts).toISOString();
+                }
+            }
+            return '';
+        }
+
         // ==================== CARGAR DATOS ====================
         async function refreshData() {
             const { data: labs } = await sb.from('laboratorios').select('*');
@@ -696,17 +718,23 @@
                 const div = document.createElement('div');
                 div.className = `alert-item ${isPaidEvent ? 'alert-paid' : 'alert-trial'}`;
 
-                const dateLabel = formatDateShort(lab.meta.paymentRequestedAt || lab.meta.createdAt);
+                const createdIso = resolveCreatedAtIso(lab.id, lab.meta);
+                const createdDateStr = formatOnlyDate(createdIso);
+                const totalTrialDays = (lab.meta && lab.meta.trialDays) || 30;
+                const remDays = lab.daysLeft !== null && lab.daysLeft !== undefined ? lab.daysLeft : totalTrialDays;
                 const phonePart = lab.meta.phone ? ` · 📱 ${lab.meta.phone}` : '';
+                const trialSummary = !isPaidEvent
+                    ? ` · 📅 Creado: <strong style="color:#fde68a;">${createdDateStr || '-'}</strong> · ⏳ Le quedan <strong style="color:#fbbf24;">${remDays} días</strong> para cumplir los ${totalTrialDays}`
+                    : ` · 📅 Solicitud: ${formatDateShort(lab.meta.paymentRequestedAt || createdIso)}`;
 
                 div.innerHTML = `
                     <div>
                         <strong style="color:${isPaidEvent ? '#22d3ee' : '#fbbf24'};">
-                            ${isPaidEvent ? '💰 NUEVO USUARIO PAGO:' : '🎁 NUEVO USUARIO A PRUEBA (30 DÍAS):'}
+                            ${isPaidEvent ? '💰 NUEVO USUARIO PAGO:' : '🎁 NUEVO USUARIO A PRUEBA:'}
                         </strong>
                         <strong style="color:#fff;margin-left:4px;">${lab.nombre}</strong>
                         <span style="font-family:var(--font-mono);color:#cbd5e1;margin-left:6px;">(${lab.email})</span>
-                        <span style="color:#94a3b8;font-size:0.8rem;">${phonePart} ${dateLabel ? `· ${dateLabel}` : ''}</span>
+                        <span style="color:#cbd5e1;font-size:0.82rem;">${phonePart}${trialSummary}</span>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;">
                         ${isPaidEvent ? `<button class="control-btn-compact" style="background:rgba(16,185,129,0.2);border-color:#10b981;color:#6ee7b7;font-size:0.75rem;" onclick="convertToPaid('${lab.id}', '${lab.nombre.replace(/'/g, "\\'")}')">💎 Confirmar Pago</button>` : ''}
@@ -784,17 +812,43 @@
                 else if (isTrial) tr.className = 'row-trial';
                 else if (isPaidPending) tr.className = 'row-paid-pending';
 
+                const createdIso = resolveCreatedAtIso(lab.id, meta);
+                const createdDateStr = formatOnlyDate(createdIso);
+                const endsDateStr = meta && meta.trialEndsAt ? formatOnlyDate(meta.trialEndsAt) : '';
+                const totalTrialDays = (meta && meta.trialDays) || 30;
+
                 let statusHtml = '';
                 if (!lab.activo) {
                     statusHtml = `<span class="badge badge-offline">INACTIVO</span>`;
                 } else if (isExpired) {
-                    statusHtml = `<span class="badge badge-expired">⛔ PRUEBA VENCIDA (0 días)</span>`;
+                    statusHtml = `
+                        <div>
+                            <span class="badge badge-expired">⛔ PRUEBA VENCIDA · 0 de ${totalTrialDays} días</span>
+                            <div style="font-size:0.75rem;color:#fca5a5;margin-top:5px;line-height:1.4;">
+                                ${createdDateStr ? `📅 Creado: <strong>${createdDateStr}</strong><br>` : ''}
+                                ${endsDateStr ? `🏁 Cumplió los ${totalTrialDays} días: <strong>${endsDateStr}</strong>` : ''}
+                            </div>
+                        </div>
+                    `;
                 } else if (isTrial) {
                     const cls = lab.daysLeft <= 5 ? 'badge-trial-urgent' : 'badge-trial';
                     const dWord = lab.daysLeft === 1 ? 'día' : 'días';
-                    statusHtml = `<span class="badge ${cls}">⏳ A PRUEBA · Quedan ${lab.daysLeft} ${dWord}</span>`;
+                    statusHtml = `
+                        <div>
+                            <span class="badge ${cls}">⏳ A PRUEBA · Faltan ${lab.daysLeft} ${dWord} para los ${totalTrialDays}</span>
+                            <div style="font-size:0.75rem;color:#cbd5e1;margin-top:5px;line-height:1.4;">
+                                ${createdDateStr ? `📅 Creado: <strong style="color:#fde68a;">${createdDateStr}</strong>` : ''}
+                                ${endsDateStr ? ` · Vence: <strong>${endsDateStr}</strong>` : ''}
+                            </div>
+                        </div>
+                    `;
                 } else if (isPaidPending) {
-                    statusHtml = `<span class="badge badge-paid-pending">💳 PAGO INFORMADO</span>`;
+                    statusHtml = `
+                        <div>
+                            <span class="badge badge-paid-pending">💳 PAGO INFORMADO</span>
+                            ${createdDateStr ? `<div style="font-size:0.74rem;color:#94a3b8;margin-top:4px;">📅 Alta: ${createdDateStr}</div>` : ''}
+                        </div>
+                    `;
                 } else {
                     statusHtml = `<span class="badge badge-online">ACTIVO · PAGO</span>`;
                 }
